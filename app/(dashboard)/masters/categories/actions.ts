@@ -62,11 +62,9 @@ export async function deleteCategory(id: string) {
       return { success: false, error: "Cannot delete category linked to products" }
     }
 
-    // Soft delete is preferred in ERP, or we could hard delete if not linked
-    // Let's do a soft delete for safety
-    await prisma.category.update({
+    // Hard delete since it's not linked to any products
+    await prisma.category.delete({
       where: { id },
-      data: { isActive: false },
     })
     revalidatePath("/masters/categories")
     return { success: true }

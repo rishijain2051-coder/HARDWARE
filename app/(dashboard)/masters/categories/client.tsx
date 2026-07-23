@@ -74,8 +74,11 @@ export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boo
 
   const handleDelete = async (id: string) => {
     if (!canEdit) return
-    if (confirm("Are you sure you want to deactivate this category?")) {
-      await deleteCategory(id)
+    if (confirm("Are you sure you want to permanently delete this category? This action cannot be undone.")) {
+      const result = await deleteCategory(id)
+      if (!result.success && result.error) {
+        alert(result.error)
+      }
     }
   }
 

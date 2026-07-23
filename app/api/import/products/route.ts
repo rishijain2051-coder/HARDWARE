@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer as any)
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer)
     const ws = workbook.worksheets[0]
     
     if (!ws) {
@@ -26,8 +26,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const data: any[] = []
-    const headers: any = {}
+    const data: Record<string, unknown>[] = []
+    const headers: Record<number, unknown> = {}
 
     // Read headers from the first row
     ws.getRow(1).eachCell((cell, colNumber) => {
@@ -37,9 +37,10 @@ export async function POST(request: Request) {
     // Read rows
     ws.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return // skip header
-      const rowData: any = {}
+      const rowData: Record<string, unknown> = {}
       row.eachCell((cell, colNumber) => {
-        rowData[headers[colNumber]] = cell.value
+        const headerName = String(headers[colNumber])
+        rowData[headerName] = cell.value
       })
       data.push(rowData)
     })
@@ -53,13 +54,6 @@ export async function POST(request: Request) {
 
     const errors: string[] = []
     let imported = 0
-
-    // Fetch existing lookup data to map names to IDs
-    const [categories, units, bins] = await Promise.all([
-      prisma.category.findMany(),
-      prisma.unit.findMany(),
-      prisma.bin.findMany(),
-    ])
 
     let systemUser = await prisma.user.findUnique({ where: { email: "system@hardware.local" } })
     if (!systemUser) {
@@ -78,63 +72,70 @@ export async function POST(request: Request) {
 
     // Process each row
     for (let i = 0; i < data.length; i++) {
-      const row: any = data[i]
+      const row = data[i]
       
       try {
         if (!row.Description) throw new Error("Description is required")
         if (!row.Category) throw new Error("Category is required")
         if (!row.Unit) throw new Error("Unit is required")
 
-        // Find relations
-        let category = categories.find(c => c.name.toLowerCase() === String(row.Category).toLowerCase())
-        if (!category) {
-          category = await prisma.category.create({ data: { name: String(row.Category), isActive: true } })
-          categories.push(category)
-        }
-
-        let unit = units.find(u => u.abbreviation.toLowerCase() === String(row.Unit).toLowerCase())
-        if (!unit) {
-          unit = await prisma.unit.create({ data: { name: String(row.Unit), abbreviation: String(row.Unit), isActive: true } })
-          units.push(unit)
-        }
-
-        let binId = null
-        if (row["Default Bin"]) {
-          let bin = bins.find(b => b.name.toLowerCase() === String(row["Default Bin"]).toLowerCase())
-          if (!bin) {
-            bin = await prisma.bin.create({ data: { name: String(row["Default Bin"]), isActive: true } })
-            bins.push(bin)
-          }
-          binId = bin.id
-        }
-
-        // Generate SKU if missing
-        let sku = row.SKU ? String(row.SKU) : null
-        if (!sku) {
-          const prefix = category.name.substring(0, 3).toUpperCase()
-          const lastProduct = await prisma.hardwareProduct.findFirst({
-            where: { sku: { startsWith: prefix + "-" } },
-            orderBy: { sku: "desc" },
+        await prisma.$transaction(async (tx) => {
+          // Find or create Category
+          const catName = String(row.Category)
+          let category = await tx.category.findFirst({
+            where: { name: { equals: catName, mode: "insensitive" } }
           })
-          let nextNum = 1
-          if (lastProduct) {
-            const match = lastProduct.sku.match(/-(\d+)$/)
-            if (match) nextNum = parseInt(match[1]) + 1
+          if (!category) {
+            category = await tx.category.create({ data: { name: catName, isActive: true } })
           }
-          sku = `${prefix}-${String(nextNum).padStart(4, "0")}`
-        }
 
-        const openingStock = row.OpeningStock ? Number(row.OpeningStock) : 0
-        const minStock = row.MinStock ? Number(row.MinStock) : 0
+          // Find or create Unit
+          const unitName = String(row.Unit)
+          let unit = await tx.unit.findFirst({
+            where: { abbreviation: { equals: unitName, mode: "insensitive" } }
+          })
+          if (!unit) {
+            unit = await tx.unit.create({ data: { name: unitName, abbreviation: unitName, isActive: true } })
+          }
 
-        // Create product
-        const product = await prisma.$transaction(async (tx) => {
-          const existing = await tx.hardwareProduct.findUnique({ where: { sku: sku as string } })
+          // Find or create Bin
+          let binId: string | null = null
+          if (row["Default Bin"]) {
+            const binName = String(row["Default Bin"])
+            let bin = await tx.bin.findFirst({
+              where: { name: { equals: binName, mode: "insensitive" } }
+            })
+            if (!bin) {
+              bin = await tx.bin.create({ data: { name: binName, isActive: true } })
+            }
+            binId = bin.id
+          }
+
+          // Generate SKU if missing
+          let sku = row.SKU ? String(row.SKU) : null
+          if (!sku) {
+            const prefix = category.name.substring(0, 3).toUpperCase()
+            const lastProduct = await tx.hardwareProduct.findFirst({
+              where: { sku: { startsWith: prefix + "-" } },
+              orderBy: { sku: "desc" },
+            })
+            let nextNum = 1
+            if (lastProduct) {
+              const match = lastProduct.sku.match(/-(\d+)$/)
+              if (match) nextNum = parseInt(match[1], 10) + 1
+            }
+            sku = `${prefix}-${String(nextNum).padStart(4, "0")}`
+          }
+
+          const existing = await tx.hardwareProduct.findUnique({ where: { sku: sku } })
           if (existing) throw new Error(`SKU ${sku} already exists`)
+
+          const openingStock = row.OpeningStock ? Number(row.OpeningStock) : 0
+          const minStock = row.MinStock ? Number(row.MinStock) : 0
 
           const p = await tx.hardwareProduct.create({
             data: {
-              sku: sku as string,
+              sku: sku,
               description: String(row.Description),
               categoryId: category.id,
               unitId: unit.id,
@@ -160,14 +161,12 @@ export async function POST(request: Request) {
               }
             })
           }
-
-          return p
         })
 
         imported++
 
-      } catch (err: any) {
-        errors.push(err.message)
+      } catch (err: unknown) {
+        errors.push(err instanceof Error ? err.message : String(err))
       }
     }
 
@@ -177,7 +176,7 @@ export async function POST(request: Request) {
       errors
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Import error:", error)
     return NextResponse.json(
       { success: false, error: "Failed to process import file" },
