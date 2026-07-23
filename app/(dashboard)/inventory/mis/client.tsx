@@ -57,7 +57,7 @@ export function MisListClient({ data, canEdit }: { data: any[]; canEdit?: boolea
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="icon" asChild>
             <Link href={`/inventory/mis/${row.original.id}`}>
               <Eye className="h-4 w-4" />
             </Link>

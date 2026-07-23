@@ -249,7 +249,7 @@ export function MisCreateClient({
                     <td className="py-2">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         className="text-destructive"
                         onClick={() => removeItem(index)}
                         disabled={items.length <= 1}

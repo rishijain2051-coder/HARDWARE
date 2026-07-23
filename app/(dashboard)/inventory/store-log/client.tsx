@@ -91,7 +91,7 @@ export function StoreLogClient({ data, canEdit }: { data: any[]; canEdit: boolea
         <div className="flex items-center justify-end space-x-2">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             className="text-destructive hover:text-destructive"
             onClick={() => handleDelete(row.original.id)}
           >

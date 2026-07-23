@@ -204,7 +204,7 @@ export function UsersClient({
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="sm" onClick={() => handleEditUser(row.original)}>
+          <Button variant="ghost" size="icon" onClick={() => handleEditUser(row.original)}>
             <Pencil className="h-4 w-4" />
           </Button>
         </div>
@@ -237,7 +237,7 @@ export function UsersClient({
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="sm" onClick={() => handleEditRole(row.original)}>
+          <Button variant="ghost" size="icon" onClick={() => handleEditRole(row.original)}>
             <Pencil className="h-4 w-4" />
           </Button>
         </div>

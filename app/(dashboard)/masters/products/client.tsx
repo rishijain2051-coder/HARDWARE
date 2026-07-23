@@ -93,14 +93,14 @@ export function ProductsClient({
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="icon" asChild>
             <Link href={`/masters/products/${row.original.id}/edit`}>
               <Pencil className="h-4 w-4" />
             </Link>
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             className="text-destructive hover:text-destructive"
             onClick={() => handleDelete(row.original.id)}
           >

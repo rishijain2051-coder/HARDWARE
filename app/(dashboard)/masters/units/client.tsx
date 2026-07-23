@@ -111,14 +111,14 @@ export function UnitsClient({ data, canEdit }: { data: any[]; canEdit?: boolean 
         <div className="flex items-center justify-end space-x-2">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => handleOpen(row.original)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             className="text-destructive hover:text-destructive"
             onClick={() => handleDelete(row.original.id)}
           >
