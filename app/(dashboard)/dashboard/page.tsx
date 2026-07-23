@@ -57,7 +57,7 @@ async function getDashboardStats() {
   ])
 
   // Get category names
-  const categoryIds = categoryBreakdown.map((c) => c.categoryId)
+  const categoryIds = categoryBreakdown.map((c: any) => c.categoryId)
   const categories = await prisma.category.findMany({
     where: { id: { in: categoryIds } },
     select: { id: true, name: true },
