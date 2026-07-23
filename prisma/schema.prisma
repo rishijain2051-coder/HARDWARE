@@ -1,0 +1,537 @@
+// Hardware Store ERP - Prisma Schema
+// Version: 1.0
+// Database: PostgreSQL
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Authentication & Authorization
+// ============================================================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  emailVerified Boolean  @default(false)
+  image         String?
+  roleId        String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  role       Role        @relation(fields: [roleId], references: [id])
+  sessions   Session[]
+  accounts   Account[]
+  auditLogs  AuditLog[]
+  grnHeaders GrnHeader[]
+  misHeaders MisHeader[]
+  storeLogs  StoreLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verifications")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================
+// Masters
+// ============================================================
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products   HardwareProduct[]
+  attributes CategoryAttribute[]
+
+  @@map("categories")
+}
+
+model Attribute {
+  id           String        @id @default(uuid())
+  name         String
+  type         AttributeType @default(TEXT)
+  isRequired   Boolean       @default(false)
+  isSearchable Boolean       @default(false)
+  options      String[] // For DROPDOWN type: list of valid options
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  categories CategoryAttribute[]
+  values     ProductAttributeValue[]
+
+  @@map("attributes")
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  DROPDOWN
+  BOOLEAN
+}
+
+model CategoryAttribute {
+  id          String @id @default(uuid())
+  categoryId  String
+  attributeId String
+  sortOrder   Int    @default(0)
+
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, attributeId])
+  @@map("category_attributes")
+}
+
+model Unit {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  abbreviation String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  products    HardwareProduct[]
+  conversions UnitConversion[]
+
+  @@map("units")
+}
+
+model UnitConversion {
+  id               String @id @default(uuid())
+  unitId           String
+  purchaseUnitName String
+  conversionFactor Float // 1 purchaseUnit = conversionFactor * baseUnit
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, purchaseUnitName])
+  @@map("unit_conversions")
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  gst           String?
+  address       String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  grnHeaders      GrnHeader[]
+  purchaseHistory PurchaseHistory[]
+  lastForProducts HardwareProduct[] @relation("LastSupplier")
+  storeLogs       StoreLog[]
+
+  @@map("suppliers")
+}
+
+model Staff {
+  id           String   @id @default(uuid())
+  name         String
+  department   String?
+  employeeCode String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  misHeaders MisHeader[]
+  storeLogs  StoreLog[]
+
+  @@map("staff")
+}
+
+model Bin {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  defaultForProducts HardwareProduct[] @relation("DefaultBin")
+  grnItems           GrnItem[]
+  misItems           MisItem[]
+  binStock           BinStock[]
+
+  @@map("bins")
+}
+
+// ============================================================
+// Hardware Products
+// ============================================================
+
+model HardwareProduct {
+  id           String  @id @default(uuid())
+  sku          String  @unique
+  previousSku  String?
+  description  String
+  categoryId   String
+  unitId       String
+  finish       String?
+  size         String?
+  minStock     Float   @default(0)
+  currentStock Float   @default(0)
+  openingStock Float   @default(0)
+  defaultBinId String?
+  imageUrl     String?
+  isActive     Boolean @default(true)
+
+  // Purchase summary fields (auto-updated from GRN)
+  lastPurchaseRate    Float?
+  lowestPurchaseRate  Float?
+  highestPurchaseRate Float?
+  lastSupplierId      String?
+  lastPurchaseDate    DateTime?
+  lastPurchaseQty     Float?
+
+  // Full-text search vector
+  searchVector String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category        Category                @relation(fields: [categoryId], references: [id])
+  unit            Unit                    @relation(fields: [unitId], references: [id])
+  defaultBin      Bin?                    @relation("DefaultBin", fields: [defaultBinId], references: [id])
+  lastSupplier    Supplier?               @relation("LastSupplier", fields: [lastSupplierId], references: [id])
+  aliases         ProductAlias[]
+  attributeValues ProductAttributeValue[]
+  grnItems        GrnItem[]
+  misItems        MisItem[]
+  storeLogs       StoreLog[]
+  purchaseHistory PurchaseHistory[]
+  binStock        BinStock[]
+
+  @@index([categoryId])
+  @@index([unitId])
+  @@index([isActive])
+  @@index([currentStock])
+  @@index([categoryId, isActive])
+  @@map("hardware_products")
+}
+
+model ProductAlias {
+  id        String @id @default(uuid())
+  productId String
+  alias     String
+
+  product HardwareProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([alias])
+  @@map("product_aliases")
+}
+
+model ProductAttributeValue {
+  id          String @id @default(uuid())
+  productId   String
+  attributeId String
+  value       String
+
+  product   HardwareProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute Attribute       @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeId])
+  @@map("product_attribute_values")
+}
+
+model BinStock {
+  id        String @id @default(uuid())
+  productId String
+  binId     String
+  quantity  Float  @default(0)
+
+  product HardwareProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bin     Bin             @relation(fields: [binId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, binId])
+  @@map("bin_stock")
+}
+
+// ============================================================
+// Inventory Transactions
+// ============================================================
+
+model GrnHeader {
+  id            String    @id @default(uuid())
+  grnNumber     String    @unique
+  date          DateTime  @default(now())
+  supplierId    String
+  invoiceNumber String?
+  invoiceDate   DateTime?
+  remarks       String?
+  createdById   String
+  isDeleted     Boolean   @default(false)
+  deleteReason  String?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  supplier  Supplier  @relation(fields: [supplierId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+  items     GrnItem[]
+
+  @@index([date])
+  @@index([supplierId])
+  @@index([date, supplierId])
+  @@index([isDeleted])
+  @@map("grn_headers")
+}
+
+model GrnItem {
+  id               String  @id @default(uuid())
+  grnHeaderId      String
+  productId        String
+  quantity         Float // Quantity in purchase unit
+  baseQuantity     Float // Quantity converted to base unit
+  purchaseUnitName String?
+  conversionFactor Float   @default(1)
+  rate             Float   @default(0) // Rate per purchase unit
+  binId            String?
+
+  grnHeader GrnHeader       @relation(fields: [grnHeaderId], references: [id], onDelete: Cascade)
+  product   HardwareProduct @relation(fields: [productId], references: [id])
+  bin       Bin?            @relation(fields: [binId], references: [id])
+
+  purchaseHistory PurchaseHistory[]
+
+  @@index([grnHeaderId])
+  @@index([productId])
+  @@map("grn_items")
+}
+
+enum RecipientType {
+  MANUFACTURING
+  POLISHING
+  PACKAGING
+  OTHER
+}
+
+model MisHeader {
+  id            String        @id @default(uuid())
+  misNumber     String        @unique
+  date          DateTime      @default(now())
+  recipientType RecipientType
+  staffId       String?
+  purpose       String? // Required when recipientType is OTHER
+  createdById   String
+  isDeleted     Boolean       @default(false)
+  deleteReason  String?
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  staff     Staff?    @relation(fields: [staffId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+  items     MisItem[]
+
+  @@index([date])
+  @@index([staffId])
+  @@index([recipientType])
+  @@index([isDeleted])
+  @@map("mis_headers")
+}
+
+model MisItem {
+  id          String  @id @default(uuid())
+  misHeaderId String
+  productId   String
+  quantity    Float // Quantity in base unit
+  binId       String?
+
+  misHeader MisHeader       @relation(fields: [misHeaderId], references: [id], onDelete: Cascade)
+  product   HardwareProduct @relation(fields: [productId], references: [id])
+  bin       Bin?            @relation(fields: [binId], references: [id])
+
+  @@index([misHeaderId])
+  @@index([productId])
+  @@map("mis_items")
+}
+
+// ============================================================
+// Store Log & Purchase History
+// ============================================================
+
+enum TransactionType {
+  GRN
+  MIS
+  OPENING
+  ADJUSTMENT
+}
+
+model StoreLog {
+  id              String          @id @default(uuid())
+  date            DateTime        @default(now())
+  transactionType TransactionType
+  referenceNumber String // GRN/MIS number
+  productId       String
+  quantity        Float // Positive for inward, negative for outward
+  balanceAfter    Float
+  supplierId      String?
+  staffId         String?
+  createdById     String
+  createdAt       DateTime        @default(now())
+
+  product   HardwareProduct @relation(fields: [productId], references: [id])
+  supplier  Supplier?       @relation(fields: [supplierId], references: [id])
+  staff     Staff?          @relation(fields: [staffId], references: [id])
+  createdBy User            @relation(fields: [createdById], references: [id])
+
+  @@index([date])
+  @@index([productId])
+  @@index([transactionType])
+  @@index([date, productId])
+  @@index([date, supplierId])
+  @@map("store_logs")
+}
+
+model PurchaseHistory {
+  id            String   @id @default(uuid())
+  productId     String
+  grnItemId     String
+  supplierId    String
+  date          DateTime
+  rate          Float
+  quantity      Float // Base unit quantity
+  invoiceNumber String?
+  createdAt     DateTime @default(now())
+
+  product  HardwareProduct @relation(fields: [productId], references: [id])
+  grnItem  GrnItem         @relation(fields: [grnItemId], references: [id], onDelete: Cascade)
+  supplier Supplier        @relation(fields: [supplierId], references: [id])
+
+  @@index([productId])
+  @@index([supplierId])
+  @@index([date])
+  @@index([productId, date])
+  @@map("purchase_history")
+}
+
+// ============================================================
+// Audit Logging
+// ============================================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  IMPORT
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String
+  action    AuditAction
+  entity    String // Table/model name
+  entityId  String?
+  changes   Json? // JSON diff of changes
+  reason    String? // Mandatory for edit/delete of transactions
+  ipAddress String?
+  timestamp DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([timestamp])
+  @@index([action])
+  @@map("audit_logs")
+}

@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Hardware Store ERP — Design System Tokens
+   Clean industrial UI with a professional color palette
+   ============================================================ */
+
+@theme {
+  /* ---- Color Palette ---- */
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+
+  --color-card: rgba(255, 255, 255, 0.85);
+  --color-card-foreground: #0f172a;
+
+  --color-popover: rgba(255, 255, 255, 0.95);
+  --color-popover-foreground: #0f172a;
+
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #2563eb;
+
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #334155;
+
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+
+  --color-accent: #e0e7ff;
+  --color-accent-foreground: #3730a3;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-success: #10b981;
+  --color-success-foreground: #ffffff;
+
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #ffffff;
+
+  --color-info: #0ea5e9;
+  --color-info-foreground: #ffffff;
+
+  --color-border: rgba(226, 232, 240, 0.8);
+  --color-input: rgba(226, 232, 240, 0.8);
+  --color-ring: rgba(59, 130, 246, 0.5);
+
+  --color-sidebar: rgba(15, 23, 42, 0.95);
+  --color-sidebar-foreground: #f8fafc;
+  --color-sidebar-hover: rgba(51, 65, 85, 0.8);
+  --color-sidebar-active: #3b82f6;
+  --color-sidebar-muted: #94a3b8;
+
+  /* ---- Typography ---- */
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ---- Shadow ---- */
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+}
+
+@utility glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-glass);
+}
+
+@utility glass-sidebar {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+* {
+  @apply border-border;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   Scrollbar Styles (for WebKit browsers)
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted-foreground);
+}
+
+/* ============================================================
+   Focus & Accessibility
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+
+.glass {
+  backdrop-filter: blur(12px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+}
+
+.gradient-sidebar {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Stock status colors */
+.stock-positive {
+  color: var(--color-success);
+}
+
+.stock-negative {
+  color: var(--color-destructive);
+  font-weight: 600;
+}
+
+.stock-low {
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+/* Table hover effect */
+.table-row-hover {
+  transition: background-color 150ms ease;
+}
+
+.table-row-hover:hover {
+  background-color: var(--color-muted);
+}
+
+/* Animate entry */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInRight 250ms ease-out;
+}
+
+/* KPI card pulse for alerts */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
