@@ -86,7 +86,7 @@ export default async function MisDetailPage({
             </tr>
           </thead>
           <tbody>
-            {mis.items.map((item, idx) => (
+            {mis.items.map((item: any, idx: number) => (
               <tr key={item.id} className="border-b last:border-0">
                 <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
                 <td className="px-4 py-3 font-mono text-xs">{item.product?.sku}</td>

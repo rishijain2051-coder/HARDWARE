@@ -102,7 +102,7 @@ export default async function GrnDetailPage({
             </tr>
           </thead>
           <tbody>
-            {grn.items.map((item, idx) => (
+            {grn.items.map((item: any, idx: number) => (
               <tr key={item.id} className="border-b last:border-0">
                 <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
                 <td className="px-4 py-3 font-mono text-xs">
