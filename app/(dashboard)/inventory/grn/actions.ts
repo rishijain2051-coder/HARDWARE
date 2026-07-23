@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
@@ -82,7 +83,7 @@ export async function saveGrn(data: {
   try {
     const grnNumber = await generateGrnNumber()
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       let finalUserId = createdById
       if (!finalUserId || finalUserId === "system") {
         let sysUser = await tx.user.findFirst({ where: { email: "system@hardware.local" } })
@@ -210,7 +211,7 @@ export async function saveGrn(data: {
 
 export async function deleteGrn(id: string, reason: string, userId: string) {
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const grn = await tx.grnHeader.findUnique({
         where: { id },
         include: { items: true },
@@ -287,7 +288,7 @@ export async function hardDeleteGrn(id: string) {
     const productIdsToRebuild = new Set(grn.items.map(item => item.productId))
 
     // Start transaction for deleting data
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Delete associated Store Log entries
       await tx.storeLog.deleteMany({
         where: { referenceNumber: grn.grnNumber, transactionType: "GRN" }
