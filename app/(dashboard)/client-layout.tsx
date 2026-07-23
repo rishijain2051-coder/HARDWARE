@@ -160,31 +160,42 @@ function NavLink({
   depth?: number;
 }) {
   const pathname = usePathname();
+  const { setCollapsed } = useSidebar();
   const isActive =
     pathname === item.href || pathname.startsWith(item.href + "/");
   const [open, setOpen] = useState(isActive);
   const hasChildren = item.children && item.children.length > 0;
 
-  if (hasChildren && !collapsed) {
+  if (hasChildren) {
     return (
       <div>
         <button
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            if (collapsed) {
+              setCollapsed(false);
+              setOpen(true);
+            } else {
+              setOpen(!open);
+            }
+          }}
           className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
             isActive
               ? "bg-sidebar-active text-primary-foreground"
               : "text-sidebar-foreground hover:bg-sidebar-hover"
           }`}
+          title={collapsed ? item.label : undefined}
         >
           {item.icon}
-          <span className="flex-1 text-left">{item.label}</span>
-          <ChevronRight
-            className={`h-4 w-4 transition-transform ${
-              open ? "rotate-90" : ""
-            }`}
-          />
+          {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+          {!collapsed && (
+            <ChevronRight
+              className={`h-4 w-4 transition-transform ${
+                open ? "rotate-90" : ""
+              }`}
+            />
+          )}
         </button>
-        {open && (
+        {open && !collapsed && (
           <div className="mt-1 ml-4 space-y-0.5 border-l border-sidebar-hover pl-3">
             {item.children!.map((child) => (
               <NavLink
