@@ -73,7 +73,7 @@ export async function getSupplierWiseReport() {
 
   return suppliers.map((s) => {
     const totalValue = s.purchaseHistory.reduce(
-      (sum, ph) => sum + ph.rate * ph.quantity,
+      (sum: number, ph: any) => sum + ph.rate * ph.quantity,
       0
     )
     return {
@@ -98,11 +98,11 @@ export async function getCategoryStockReport() {
     orderBy: { name: "asc" },
   })
 
-  return categories.map((c) => ({
+  return categories.map((c: any) => ({
     id: c.id,
     name: c.name,
     totalProducts: c.products.length,
-    totalStock: c.products.reduce((sum, p) => sum + p.currentStock, 0),
-    lowStockCount: c.products.filter((p) => p.minStock > 0 && p.currentStock <= p.minStock).length,
+    totalStock: c.products.reduce((sum: number, p: any) => sum + p.currentStock, 0),
+    lowStockCount: c.products.filter((p: any) => p.minStock > 0 && p.currentStock <= p.minStock).length,
   }))
 }

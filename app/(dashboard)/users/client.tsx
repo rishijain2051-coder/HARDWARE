@@ -167,7 +167,7 @@ export function UsersClient({
   }
 
   // Group permissions by module for the UI
-  const groupedPermissions = permissions.reduce((acc, perm) => {
+  const groupedPermissions = permissions.reduce((acc: any, perm: any) => {
     if (!acc[perm.module]) acc[perm.module] = []
     acc[perm.module].push(perm)
     return acc

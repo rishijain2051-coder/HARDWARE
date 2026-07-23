@@ -22,7 +22,7 @@ export default async function GrnDetailPage({
   const canEdit = session?.user ? await hasPermission(session.user.id, "INVENTORY", "EDIT") : false
 
   const totalValue = grn.items.reduce(
-    (sum, item) => sum + item.quantity * item.rate,
+    (sum: number, item: any) => sum + item.quantity * item.rate,
     0
   )
 

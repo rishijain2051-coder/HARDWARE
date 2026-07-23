@@ -1,0 +1,300 @@
+diff --git a/app/(dashboard)/client-layout.tsx b/app/(dashboard)/client-layout.tsx
+index 0266848..ee6eccb 100644
+--- a/app/(dashboard)/client-layout.tsx
++++ b/app/(dashboard)/client-layout.tsx
+@@ -322,6 +322,30 @@ function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
+ 
+ function TopBar() {
+   const { setCollapsed } = useSidebar();
++  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
++
++  if (mobileSearchOpen) {
++    return (
++      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/50 glass px-4 lg:hidden">
++        <div className="relative flex-1">
++          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
++          <input
++            type="search"
++            autoFocus
++            placeholder="Search products, SKU, suppliers..."
++            className="w-full rounded-full border border-input bg-white/50 py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 transition-colors shadow-sm"
++          />
++        </div>
++        <button
++          onClick={() => setMobileSearchOpen(false)}
++          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
++          aria-label="Close search"
++        >
++          <X className="h-5 w-5" />
++        </button>
++      </header>
++    );
++  }
+ 
+   return (
+     <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border/50 glass px-4 lg:px-6">
+@@ -340,6 +364,15 @@ function TopBar() {
+         </h1>
+       </div>
+ 
++      {/* Mobile search trigger */}
++      <button
++        onClick={() => setMobileSearchOpen(true)}
++        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
++        aria-label="Open search"
++      >
++        <Search className="h-5 w-5" />
++      </button>
++
+       {/* Search bar */}
+       <div className="hidden lg:flex flex-1 items-center gap-4">
+         <div className="relative max-w-md flex-1">
+diff --git a/app/(dashboard)/inventory/grn/[id]/page.tsx b/app/(dashboard)/inventory/grn/[id]/page.tsx
+index 4834ddf..acb469e 100644
+--- a/app/(dashboard)/inventory/grn/[id]/page.tsx
++++ b/app/(dashboard)/inventory/grn/[id]/page.tsx
+@@ -57,7 +57,7 @@ export default async function GrnDetailPage({
+       </div>
+ 
+       {/* Header Details */}
+-      <div className="grid grid-cols-4 gap-4 rounded-lg border bg-card p-6">
++      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 rounded-lg border bg-card p-6">
+         <div>
+           <p className="text-xs text-muted-foreground">Supplier</p>
+           <p className="font-medium">{grn.supplier?.name || "—"}</p>
+@@ -87,7 +87,7 @@ export default async function GrnDetailPage({
+       </div>
+ 
+       {/* Items Table */}
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/inventory/grn/create/client.tsx b/app/(dashboard)/inventory/grn/create/client.tsx
+index 42455d8..cf22865 100644
+--- a/app/(dashboard)/inventory/grn/create/client.tsx
++++ b/app/(dashboard)/inventory/grn/create/client.tsx
+@@ -169,7 +169,7 @@ export function GrnCreateClient({
+       {/* Header */}
+       <div className="rounded-lg border bg-card p-6 space-y-4">
+         <h3 className="text-lg font-semibold">GRN Header</h3>
+-        <div className="grid grid-cols-2 gap-4">
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+           <div>
+             <label className="text-sm font-medium">Supplier *</label>
+             <Select onValueChange={setSupplierId} value={supplierId}>
+diff --git a/app/(dashboard)/inventory/mis/[id]/page.tsx b/app/(dashboard)/inventory/mis/[id]/page.tsx
+index e9a41a9..0e2d0d1 100644
+--- a/app/(dashboard)/inventory/mis/[id]/page.tsx
++++ b/app/(dashboard)/inventory/mis/[id]/page.tsx
+@@ -52,7 +52,7 @@ export default async function MisDetailPage({
+       </div>
+ 
+       {/* Header Details */}
+-      <div className="grid grid-cols-3 gap-4 rounded-lg border bg-card p-6">
++      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg border bg-card p-6">
+         <div>
+           <p className="text-xs text-muted-foreground">Recipient Type</p>
+           <Badge variant="outline">{mis.recipientType}</Badge>
+@@ -74,7 +74,7 @@ export default async function MisDetailPage({
+       </div>
+ 
+       {/* Items Table */}
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/inventory/mis/create/client.tsx b/app/(dashboard)/inventory/mis/create/client.tsx
+index 9b92b6d..a0903cb 100644
+--- a/app/(dashboard)/inventory/mis/create/client.tsx
++++ b/app/(dashboard)/inventory/mis/create/client.tsx
+@@ -123,7 +123,7 @@ export function MisCreateClient({
+       {/* Header */}
+       <div className="rounded-lg border bg-card p-6 space-y-4">
+         <h3 className="text-lg font-semibold">MIS Header</h3>
+-        <div className="grid grid-cols-2 gap-4">
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+           <div>
+             <label className="text-sm font-medium">Recipient Type *</label>
+             <Select onValueChange={setRecipientType} value={recipientType}>
+diff --git a/app/(dashboard)/masters/attributes/client.tsx b/app/(dashboard)/masters/attributes/client.tsx
+index 3b4f6e0..7011db3 100644
+--- a/app/(dashboard)/masters/attributes/client.tsx
++++ b/app/(dashboard)/masters/attributes/client.tsx
+@@ -242,7 +242,7 @@ export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boo
+                 </FormItem>
+               )}
+ 
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField
+                   control={form.control}
+                   name="isRequired"
+diff --git a/app/(dashboard)/masters/products/components/product-form.tsx b/app/(dashboard)/masters/products/components/product-form.tsx
+index 92f62c0..1d9b1d5 100644
+--- a/app/(dashboard)/masters/products/components/product-form.tsx
++++ b/app/(dashboard)/masters/products/components/product-form.tsx
+@@ -190,7 +190,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
+               )}
+             />
+ 
+-            <div className="grid grid-cols-2 gap-4">
++            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <FormField
+                 control={form.control}
+                 name="categoryId"
+@@ -248,7 +248,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
+               />
+             </div>
+ 
+-            <div className="grid grid-cols-3 gap-4">
++            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <FormField
+                 control={form.control}
+                 name="sku"
+@@ -292,7 +292,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
+               />
+             </div>
+ 
+-            <div className="grid grid-cols-3 gap-4">
++            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <FormField
+                 control={form.control}
+                 name="minStock"
+@@ -413,7 +413,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
+           {relevantAttributes.length > 0 && (
+             <div className="rounded-lg border bg-card p-6 space-y-4">
+               <h3 className="text-lg font-semibold">Product Attributes</h3>
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 {relevantAttributes.map((attr: any, idx: number) => {
+                   const attrIndex = form
+                     .getValues("attributes")
+diff --git a/app/(dashboard)/masters/staff/client.tsx b/app/(dashboard)/masters/staff/client.tsx
+index 8108a23..7587cef 100644
+--- a/app/(dashboard)/masters/staff/client.tsx
++++ b/app/(dashboard)/masters/staff/client.tsx
+@@ -192,7 +192,7 @@ export function StaffClient({ data, canEdit }: { data: any[]; canEdit?: boolean
+                 )}
+               />
+ 
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField
+                   control={form.control}
+                   name="employeeCode"
+@@ -221,7 +221,7 @@ export function StaffClient({ data, canEdit }: { data: any[]; canEdit?: boolean
+                 />
+               </div>
+ 
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField
+                   control={form.control}
+                   name="phone"
+diff --git a/app/(dashboard)/masters/suppliers/client.tsx b/app/(dashboard)/masters/suppliers/client.tsx
+index c3ad2d4..424a32c 100644
+--- a/app/(dashboard)/masters/suppliers/client.tsx
++++ b/app/(dashboard)/masters/suppliers/client.tsx
+@@ -185,7 +185,7 @@ export function SuppliersClient({ data, canEdit }: { data: any[]; canEdit?: bool
+             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+               {error && <div className="text-sm text-destructive">{error}</div>}
+               
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField
+                   control={form.control}
+                   name="name"
+diff --git a/app/(dashboard)/masters/units/client.tsx b/app/(dashboard)/masters/units/client.tsx
+index d856d84..707fc2d 100644
+--- a/app/(dashboard)/masters/units/client.tsx
++++ b/app/(dashboard)/masters/units/client.tsx
+@@ -160,7 +160,7 @@ export function UnitsClient({ data, canEdit }: { data: any[]; canEdit?: boolean
+           <Form {...form}>
+             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+               {error && <div className="text-sm text-destructive">{error}</div>}
+-              <div className="grid grid-cols-2 gap-4">
++              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField
+                   control={form.control}
+                   name="name"
+diff --git a/app/(dashboard)/reports/category-stock/page.tsx b/app/(dashboard)/reports/category-stock/page.tsx
+index 8dd1eae..23404e7 100644
+--- a/app/(dashboard)/reports/category-stock/page.tsx
++++ b/app/(dashboard)/reports/category-stock/page.tsx
+@@ -13,7 +13,7 @@ export default async function CategoryStockReportPage() {
+         </p>
+       </div>
+ 
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/reports/low-stock/page.tsx b/app/(dashboard)/reports/low-stock/page.tsx
+index 88034c6..036efc9 100644
+--- a/app/(dashboard)/reports/low-stock/page.tsx
++++ b/app/(dashboard)/reports/low-stock/page.tsx
+@@ -16,7 +16,7 @@ export default async function LowStockReportPage() {
+         </p>
+       </div>
+ 
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/reports/purchase-history/page.tsx b/app/(dashboard)/reports/purchase-history/page.tsx
+index 1e9cd38..60ccea3 100644
+--- a/app/(dashboard)/reports/purchase-history/page.tsx
++++ b/app/(dashboard)/reports/purchase-history/page.tsx
+@@ -13,7 +13,7 @@ export default async function PurchaseHistoryReportPage() {
+         </p>
+       </div>
+ 
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/reports/stock-summary/page.tsx b/app/(dashboard)/reports/stock-summary/page.tsx
+index 02af660..1fce1f4 100644
+--- a/app/(dashboard)/reports/stock-summary/page.tsx
++++ b/app/(dashboard)/reports/stock-summary/page.tsx
+@@ -12,7 +12,7 @@ export default async function StockSummaryReportPage() {
+         </p>
+       </div>
+ 
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/reports/supplier-wise/page.tsx b/app/(dashboard)/reports/supplier-wise/page.tsx
+index d663ade..2058d0a 100644
+--- a/app/(dashboard)/reports/supplier-wise/page.tsx
++++ b/app/(dashboard)/reports/supplier-wise/page.tsx
+@@ -12,7 +12,7 @@ export default async function SupplierWiseReportPage() {
+         </p>
+       </div>
+ 
+-      <div className="rounded-lg border bg-card overflow-hidden">
++      <div className="rounded-lg border bg-card overflow-x-auto">
+         <table className="w-full text-sm">
+           <thead>
+             <tr className="border-b bg-muted/50">
+diff --git a/app/(dashboard)/users/client.tsx b/app/(dashboard)/users/client.tsx
+index c172acd..6b2bcc1 100644
+--- a/app/(dashboard)/users/client.tsx
++++ b/app/(dashboard)/users/client.tsx
+@@ -346,7 +346,7 @@ export function UsersClient({
+                 {roleError}
+               </div>
+             )}
+-            <div className="grid grid-cols-2 gap-4">
++            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <Label>Role Name *</Label>
+                 <Input value={roleName} onChange={(e) => setRoleName(e.target.value)} required placeholder="e.g. Store Manager" />
