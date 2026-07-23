@@ -1,4 +1,4 @@
-import { RecipientType, AttributeType, AuditAction, TransactionType } from "@prisma/client";
+import { RecipientType, AttributeType, TransactionType } from "@prisma/client";
 
 // ============================================================
 // API Types
@@ -202,4 +202,4 @@ export interface StoreLogEntry {
 }
 
 // Re-export Prisma enums for convenience
-export { RecipientType, AttributeType, AuditAction, TransactionType };
+export { RecipientType, AttributeType, TransactionType };

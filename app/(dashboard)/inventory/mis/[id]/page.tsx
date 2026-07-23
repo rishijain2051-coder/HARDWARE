@@ -19,7 +19,7 @@ export default async function MisDetailPage({
   if (!mis) notFound()
 
   const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "INVENTORY", "EDIT") : false
+  const canEdit = session?.user ? await hasPermission(session.user.id, "OUTWARD_RECORD", "EDIT") : false
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

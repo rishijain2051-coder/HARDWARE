@@ -10,7 +10,6 @@ import {
   FileInput,
   FileOutput,
   Users,
-  Shield,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -143,11 +142,6 @@ const navItems: NavItem[] = [
     icon: <Users className="h-5 w-5" />,
     module: "USER_MANAGEMENT",
   },
-  {
-    label: "Audit Log",
-    href: "/audit-log",
-    icon: <Shield className="h-5 w-5" />,
-  },
 ];
 
 function NavLink({
@@ -252,7 +246,7 @@ function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
 
       <aside
         className={`fixed left-0 top-0 z-50 flex h-full flex-col glass-sidebar transition-all duration-300 lg:relative lg:z-auto ${
-          collapsed ? "w-0 -translate-x-full lg:w-16 lg:translate-x-0" : "w-72"
+          collapsed ? "w-0 -translate-x-full overflow-hidden lg:w-16 lg:translate-x-0 lg:overflow-visible" : "w-72"
         }`}
       >
         {/* Header */}

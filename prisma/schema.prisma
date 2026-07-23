@@ -29,7 +29,6 @@ model User {
   role       Role        @relation(fields: [roleId], references: [id])
   sessions   Session[]
   accounts   Account[]
-  auditLogs  AuditLog[]
   grnHeaders GrnHeader[]
   misHeaders MisHeader[]
   storeLogs  StoreLog[]
@@ -509,35 +508,3 @@ model PurchaseHistory {
   @@map("purchase_history")
 }
 
-// ============================================================
-// Audit Logging
-// ============================================================
-
-enum AuditAction {
-  CREATE
-  UPDATE
-  DELETE
-  LOGIN
-  LOGOUT
-  IMPORT
-}
-
-model AuditLog {
-  id        String      @id @default(uuid())
-  userId    String
-  action    AuditAction
-  entity    String // Table/model name
-  entityId  String?
-  changes   Json? // JSON diff of changes
-  reason    String? // Mandatory for edit/delete of transactions
-  ipAddress String?
-  timestamp DateTime    @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([entity])
-  @@index([timestamp])
-  @@index([action])
-  @@map("audit_logs")
-}

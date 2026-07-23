@@ -19,7 +19,7 @@ export default async function GrnDetailPage({
   if (!grn) notFound()
 
   const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "INVENTORY", "EDIT") : false
+  const canEdit = session?.user ? await hasPermission(session.user.id, "INWARD_RECORD", "EDIT") : false
 
   const totalValue = grn.items.reduce(
     (sum: number, item: any) => sum + item.quantity * item.rate,

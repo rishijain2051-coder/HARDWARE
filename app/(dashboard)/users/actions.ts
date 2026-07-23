@@ -13,7 +13,7 @@ const REQUIRED_PERMISSIONS = [
   { module: "OUTWARD_RECORD", action: "VIEW", description: "View MIS" },
   { module: "OUTWARD_RECORD", action: "EDIT", description: "Create/Edit MIS" },
   { module: "STORE_LOG", action: "VIEW", description: "View Store Logs" },
-  { module: "STORE_LOG", action: "EDIT", description: "Edit Store Logs" },
+  { module: "STORE_LOG", action: "EDIT", description: "Delete Store Log entries" },
   { module: "SUPPLIER_MASTER", action: "VIEW", description: "View Suppliers" },
   { module: "SUPPLIER_MASTER", action: "EDIT", description: "Manage Suppliers" },
   { module: "STAFF_MASTER", action: "VIEW", description: "View Staff" },
