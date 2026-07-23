@@ -38,7 +38,7 @@ npm run dev
 Navigate to: `http://localhost:3000/api/setup-admin`
 This will generate an admin user with the email `admin@hardware.local` and a randomly generated secure password displayed on the screen. **Save this password immediately.**
 
-### 5. Start Hacking
+### 5. Start Developing
 You can now log in at `http://localhost:3000/login`.
 ```bash
 npm run dev
