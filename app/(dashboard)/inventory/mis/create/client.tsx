@@ -177,7 +177,78 @@ export function MisCreateClient({
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile card layout */}
+        <div className="space-y-4 sm:hidden">
+          {items.map((item, index) => {
+            const selectedProduct = products.find(
+              (p: any) => p.id === item.productId
+            )
+            return (
+              <div key={index} className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Item {index + 1}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive h-8 w-8"
+                    onClick={() => removeItem(index)}
+                    disabled={items.length <= 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Product *</label>
+                  <ProductCombobox
+                    products={products}
+                    categories={categories}
+                    units={units}
+                    value={item.productId}
+                    onChange={(v) => updateItem(index, "productId", v)}
+                  />
+                </div>
+                {selectedProduct && (
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                    Available: {selectedProduct.currentStock} {selectedProduct.unit?.abbreviation || ""}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Qty *</label>
+                    <Input
+                      type="number"
+                      value={item.quantity || ""}
+                      onChange={(e) =>
+                        updateItem(index, "quantity", parseFloat(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Bin</label>
+                    <Select
+                      value={item.binId}
+                      onValueChange={(v) => updateItem(index, "binId", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bins.map((b: any) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">

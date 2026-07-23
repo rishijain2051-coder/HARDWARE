@@ -27,7 +27,7 @@ export default async function MisCreatePage() {
   const userId = systemUser?.id || ""
 
   return (
-    <div className="p-6">
+    <div>
       <MisCreateClient
         staff={staff}
         products={products}

@@ -33,6 +33,7 @@ export async function getMisList() {
       _count: { select: { items: true } },
     },
     orderBy: { date: "desc" },
+    take: 500,
   })
 }
 

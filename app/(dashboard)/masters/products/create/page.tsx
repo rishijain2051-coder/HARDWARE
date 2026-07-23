@@ -5,7 +5,7 @@ export default async function CreateProductPage() {
   const lookups = await getFormLookups()
 
   return (
-    <div className="p-6">
+    <div>
       <ProductForm lookups={lookups} />
     </div>
   )

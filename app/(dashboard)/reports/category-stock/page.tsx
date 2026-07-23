@@ -5,7 +5,7 @@ export default async function CategoryStockReportPage() {
   const categories = await getCategoryStockReport()
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Category Stock Report</h2>
         <p className="text-sm text-muted-foreground">

@@ -22,7 +22,7 @@ export default async function MisDetailPage({
   const canEdit = session?.user ? await hasPermission(session.user.id, "INVENTORY", "EDIT") : false
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center gap-4">
         <Link
           href="/inventory/mis"

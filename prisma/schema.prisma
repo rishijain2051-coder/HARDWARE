@@ -49,6 +49,7 @@ model Session {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -69,6 +70,7 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, providerId])
   @@map("accounts")
 }
 
@@ -371,6 +373,7 @@ model GrnHeader {
   @@index([supplierId])
   @@index([date, supplierId])
   @@index([isDeleted])
+  @@index([isDeleted, date])
   @@map("grn_headers")
 }
 
@@ -425,6 +428,7 @@ model MisHeader {
   @@index([staffId])
   @@index([recipientType])
   @@index([isDeleted])
+  @@index([isDeleted, date])
   @@map("mis_headers")
 }
 
@@ -478,6 +482,8 @@ model StoreLog {
   @@index([transactionType])
   @@index([date, productId])
   @@index([date, supplierId])
+  @@index([referenceNumber, transactionType])
+  @@index([staffId])
   @@map("store_logs")
 }
 

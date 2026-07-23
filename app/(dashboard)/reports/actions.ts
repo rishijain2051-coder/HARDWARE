@@ -60,30 +60,34 @@ export async function getPurchaseHistoryReport({
 }
 
 export async function getSupplierWiseReport() {
-  const suppliers = await prisma.supplier.findMany({
-    where: { isActive: true },
-    include: {
-      _count: { select: { grnHeaders: true, purchaseHistory: true } },
-      purchaseHistory: {
-        select: { rate: true, quantity: true },
+  const [suppliers, purchaseData] = await Promise.all([
+    prisma.supplier.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { grnHeaders: true, purchaseHistory: true } },
       },
-    },
-    orderBy: { name: "asc" },
-  })
+      orderBy: { name: "asc" },
+    }),
+    prisma.purchaseHistory.findMany({
+      where: { supplier: { isActive: true } },
+      select: { supplierId: true, rate: true, quantity: true },
+    }),
+  ])
 
-  return suppliers.map((s) => {
-    const totalValue = s.purchaseHistory.reduce(
-      (sum: number, ph: any) => sum + ph.rate * ph.quantity,
-      0
-    )
-    return {
-      id: s.id,
-      name: s.name,
-      totalGrns: s._count.grnHeaders,
-      totalPurchases: s._count.purchaseHistory,
-      totalValue,
-    }
-  })
+  const totalValueMap = new Map<string, number>()
+  for (const ph of purchaseData) {
+    totalValueMap.set(ph.supplierId, (totalValueMap.get(ph.supplierId) || 0) + ph.rate * ph.quantity)
+  }
+
+  return suppliers.map((s) => ({
+    id: s.id,
+    name: s.name,
+    totalGrns: s._count.grnHeaders,
+    totalPurchases: s._count.purchaseHistory,
+    totalValue: totalValueMap.get(s.id) || 0,
+  }))
 }
 
 export async function getCategoryStockReport() {

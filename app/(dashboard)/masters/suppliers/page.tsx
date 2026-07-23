@@ -11,7 +11,7 @@ export default async function SuppliersPage() {
   const canEdit = session?.user ? await hasPermission(session.user.id, "SUPPLIER_MASTER", "EDIT") : false
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <SuppliersClient data={suppliers} canEdit={canEdit} />
     </div>
   )

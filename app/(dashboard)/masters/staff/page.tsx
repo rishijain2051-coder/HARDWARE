@@ -11,7 +11,7 @@ export default async function StaffPage() {
   const canEdit = session?.user ? await hasPermission(session.user.id, "STAFF_MASTER", "EDIT") : false
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <StaffClient data={staff} canEdit={canEdit} />
     </div>
   )

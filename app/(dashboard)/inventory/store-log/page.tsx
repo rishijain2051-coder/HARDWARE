@@ -10,7 +10,7 @@ export default async function StoreLogPage() {
   const canEdit = session?.user ? await hasPermission(session.user.id, "INVENTORY", "EDIT") : false
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <StoreLogClient data={logs} canEdit={canEdit} />
     </div>
   )

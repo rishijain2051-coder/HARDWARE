@@ -5,7 +5,7 @@ export default async function AuditLogPage() {
   const logs = await getAuditLogs()
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <AuditLogClient data={logs} />
     </div>
   )

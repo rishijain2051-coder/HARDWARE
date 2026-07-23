@@ -19,7 +19,7 @@ export default async function GrnCreatePage() {
   const userId = systemUser?.id || ""
 
   return (
-    <div className="p-6">
+    <div>
       <GrnCreateClient
         suppliers={suppliers}
         products={products}

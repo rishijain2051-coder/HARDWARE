@@ -20,18 +20,25 @@ export async function getUserPermissions(userId: string) {
 }
 
 export async function hasPermission(userId: string, module: string, action: string) {
-  // Check if Admin
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { role: true }
+    include: {
+      role: {
+        include: {
+          permissions: {
+            include: { permission: true }
+          }
+        }
+      }
+    }
   })
-  
-  if (user?.role?.name === "ADMIN" || user?.role?.name === "Admin") {
-    return true // Admins can do everything
-  }
 
-  const permissions = await getUserPermissions(userId)
-  return permissions.some(p => p.module === module && p.action === action)
+  if (!user?.role) return false
+  if (user.role.name === "ADMIN" || user.role.name === "Admin") return true
+
+  return user.role.permissions.some(
+    rp => rp.permission.module === module && rp.permission.action === action
+  )
 }
 
 // Used by prisma/seed.ts to assign default permissions to roles

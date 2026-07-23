@@ -4,7 +4,7 @@ export default async function StockSummaryReportPage() {
   const products = await getStockSummaryReport()
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Stock Summary</h2>
         <p className="text-sm text-muted-foreground">

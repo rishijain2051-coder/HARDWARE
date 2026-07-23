@@ -16,7 +16,7 @@ export default async function EditProductPage({
   if (!product) notFound()
 
   return (
-    <div className="p-6">
+    <div>
       <ProductForm initialData={product} lookups={lookups} />
     </div>
   )

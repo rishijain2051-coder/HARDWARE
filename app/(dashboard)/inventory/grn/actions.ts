@@ -34,6 +34,7 @@ export async function getGrnList() {
       _count: { select: { items: true } },
     },
     orderBy: { date: "desc" },
+    take: 500,
   })
 }
 
@@ -126,26 +127,27 @@ export async function saveGrn(data: {
           },
         })
 
-        // 3. Update product stock
-        const product = await tx.hardwareProduct.update({
+        // 3. Fetch current product to check rate bounds
+        const currentProduct = await tx.hardwareProduct.findUniqueOrThrow({
           where: { id: item.productId },
-          data: { currentStock: { increment: item.baseQuantity } },
+          select: { lowestPurchaseRate: true, highestPurchaseRate: true },
         })
 
-        // 4. Update purchase rate summary on product
-        await tx.hardwareProduct.update({
+        // 4. Update product stock and purchase summary in one call
+        const product = await tx.hardwareProduct.update({
           where: { id: item.productId },
           data: {
+            currentStock: { increment: item.baseQuantity },
             lastPurchaseRate: item.rate,
             lastSupplierId: supplierId,
             lastPurchaseDate: new Date(),
             lastPurchaseQty: item.baseQuantity,
             lowestPurchaseRate:
-              product.lowestPurchaseRate === null || item.rate < product.lowestPurchaseRate
+              currentProduct.lowestPurchaseRate === null || item.rate < currentProduct.lowestPurchaseRate
                 ? item.rate
                 : undefined,
             highestPurchaseRate:
-              product.highestPurchaseRate === null || item.rate > product.highestPurchaseRate
+              currentProduct.highestPurchaseRate === null || item.rate > currentProduct.highestPurchaseRate
                 ? item.rate
                 : undefined,
           },
@@ -158,7 +160,7 @@ export async function saveGrn(data: {
             referenceNumber: grnNumber,
             productId: item.productId,
             quantity: item.baseQuantity,
-            balanceAfter: product.currentStock + item.baseQuantity,
+            balanceAfter: product.currentStock,
             supplierId,
             createdById: finalUserId,
           },

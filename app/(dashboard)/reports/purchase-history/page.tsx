@@ -5,7 +5,7 @@ export default async function PurchaseHistoryReportPage() {
   const history = await getPurchaseHistoryReport()
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Purchase History</h2>
         <p className="text-sm text-muted-foreground">

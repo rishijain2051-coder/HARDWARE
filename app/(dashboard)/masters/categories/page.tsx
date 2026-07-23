@@ -11,7 +11,7 @@ export default async function CategoriesPage() {
   const canEdit = session?.user ? await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT") : false
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <CategoriesClient data={categories} canEdit={canEdit} />
     </div>
   )
