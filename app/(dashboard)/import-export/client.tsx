@@ -121,11 +121,24 @@ export function ImportExportClient() {
               }`}
             >
               {importResult.success ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <Check className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    Imported {importResult.imported} products successfully
-                  </span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Check className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {importResult.imported > 0 && `${importResult.imported} new`}
+                      {importResult.imported > 0 && importResult.updated > 0 && ", "}
+                      {importResult.updated > 0 && `${importResult.updated} updated`}
+                      {importResult.imported === 0 && importResult.updated === 0 && "No changes"}
+                      {(importResult.imported > 0 || importResult.updated > 0) && " — done"}
+                    </span>
+                  </div>
+                  {importResult.errors?.length > 0 && (
+                    <ul className="text-xs text-amber-600 space-y-1 mt-2">
+                      {importResult.errors.slice(0, 10).map((err: string, i: number) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -138,7 +151,7 @@ export function ImportExportClient() {
                   {importResult.errors?.length > 0 && (
                     <ul className="text-xs text-destructive space-y-1">
                       {importResult.errors.slice(0, 10).map((err: string, i: number) => (
-                        <li key={i}>Row {i + 2}: {err}</li>
+                        <li key={i}>{err}</li>
                       ))}
                     </ul>
                   )}

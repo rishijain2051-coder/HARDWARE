@@ -78,6 +78,7 @@ export async function POST(request: Request) {
 
     const errors: string[] = []
     let imported = 0
+    let updated = 0
 
     let systemUser = await prisma.user.findUnique({ where: { email: "system@hardware.local" } })
     if (!systemUser) {
@@ -139,66 +140,79 @@ export async function POST(request: Request) {
             binId = bin.id
           }
 
-          let sku = clean(row.SKU)
-          if (!sku) {
-            const prefix = category.name.substring(0, 3).toUpperCase()
-            const lastProduct = await tx.hardwareProduct.findFirst({
-              where: { sku: { startsWith: prefix + "-" } },
-              orderBy: { sku: "desc" },
-            })
-            let nextNum = 1
-            if (lastProduct) {
-              const match = lastProduct.sku.match(/-(\d+)$/)
-              if (match) nextNum = parseInt(match[1], 10) + 1
-            }
-            sku = `${prefix}-${String(nextNum).padStart(4, "0")}`
-          }
+          const openingStock = cleanNum(row.OpeningStock)
+          const minStock = cleanNum(row.MinStock)
 
-          const existing = await tx.hardwareProduct.findUnique({ where: { sku: sku } })
-          if (existing) throw new Error(`SKU ${sku} already exists`)
-
-          const duplicate = await tx.hardwareProduct.findFirst({
+          const existingProduct = await tx.hardwareProduct.findFirst({
             where: {
               description: { equals: description, mode: "insensitive" },
               categoryId: category.id,
             },
           })
-          if (duplicate) throw new Error(`Product "${description}" already exists in category "${catName}" (SKU: ${duplicate.sku})`)
 
-          const openingStock = cleanNum(row.OpeningStock)
-          const minStock = cleanNum(row.MinStock)
-
-          const p = await tx.hardwareProduct.create({
-            data: {
-              sku,
-              description,
-              categoryId: category.id,
-              unitId: unit.id,
-              finish: clean(row.Finish),
-              size: clean(row.Size),
-              minStock,
-              openingStock,
-              currentStock: openingStock,
-              defaultBinId: binId,
-              isActive: true,
-            }
-          })
-
-          if (openingStock > 0 && systemUser) {
-            await tx.storeLog.create({
+          if (existingProduct) {
+            await tx.hardwareProduct.update({
+              where: { id: existingProduct.id },
               data: {
-                transactionType: "OPENING",
-                referenceNumber: `OPENING-${sku}`,
-                productId: p.id,
-                quantity: openingStock,
-                balanceAfter: openingStock,
-                createdById: systemUser.id,
-              }
+                unitId: unit.id,
+                finish: clean(row.Finish),
+                size: clean(row.Size),
+                minStock,
+                defaultBinId: binId,
+                ...(openingStock > 0 ? { openingStock, currentStock: openingStock } : {}),
+              },
             })
+            updated++
+          } else {
+            let sku = clean(row.SKU)
+            if (!sku) {
+              const prefix = category.name.substring(0, 3).toUpperCase()
+              const lastProduct = await tx.hardwareProduct.findFirst({
+                where: { sku: { startsWith: prefix + "-" } },
+                orderBy: { sku: "desc" },
+              })
+              let nextNum = 1
+              if (lastProduct) {
+                const match = lastProduct.sku.match(/-(\d+)$/)
+                if (match) nextNum = parseInt(match[1], 10) + 1
+              }
+              sku = `${prefix}-${String(nextNum).padStart(4, "0")}`
+            }
+
+            const skuTaken = await tx.hardwareProduct.findUnique({ where: { sku } })
+            if (skuTaken) throw new Error(`SKU ${sku} already exists`)
+
+            const p = await tx.hardwareProduct.create({
+              data: {
+                sku,
+                description,
+                categoryId: category.id,
+                unitId: unit.id,
+                finish: clean(row.Finish),
+                size: clean(row.Size),
+                minStock,
+                openingStock,
+                currentStock: openingStock,
+                defaultBinId: binId,
+                isActive: true,
+              },
+            })
+
+            if (openingStock > 0 && systemUser) {
+              await tx.storeLog.create({
+                data: {
+                  transactionType: "OPENING",
+                  referenceNumber: `OPENING-${sku}`,
+                  productId: p.id,
+                  quantity: openingStock,
+                  balanceAfter: openingStock,
+                  createdById: systemUser.id,
+                },
+              })
+            }
+            imported++
           }
         })
-
-        imported++
 
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -209,7 +223,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       imported,
-      errors
+      updated,
+      errors,
     })
 
   } catch (error: unknown) {
