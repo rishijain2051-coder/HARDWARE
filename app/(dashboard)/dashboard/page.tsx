@@ -63,8 +63,8 @@ async function getDashboardStats() {
     select: { id: true, name: true },
   })
 
-  const categoryData = categoryBreakdown.map((cb) => ({
-    name: categories.find((c) => c.id === cb.categoryId)?.name || "Unknown",
+  const categoryData = categoryBreakdown.map((cb: any) => ({
+    name: categories.find((c: any) => c.id === cb.categoryId)?.name || "Unknown",
     count: cb._count.id,
   }))
 
