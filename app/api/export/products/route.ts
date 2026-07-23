@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 
 export async function GET() {
   const products = await prisma.hardwareProduct.findMany({
@@ -27,16 +27,22 @@ export async function GET() {
     Active: p.isActive ? "Yes" : "No",
   }))
 
-  const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.json_to_sheet(data)
-  XLSX.utils.book_append_sheet(wb, ws, "Products")
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet("Products")
 
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
+  if (data.length > 0) {
+    const headers = Object.keys(data[0])
+    worksheet.columns = headers.map((h) => ({ header: h, key: h }))
+    data.forEach((row) => worksheet.addRow(row))
+  } else {
+    worksheet.addRow(["No data available"])
+  }
 
-  return new NextResponse(buf, {
+  const buffer = await workbook.xlsx.writeBuffer()
+
+  return new NextResponse(buffer, {
     headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="products.xlsx"`,
     },
   })

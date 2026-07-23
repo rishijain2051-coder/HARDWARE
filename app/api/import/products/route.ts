@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 
 export async function POST(request: Request) {
   try {
@@ -14,10 +14,35 @@ export async function POST(request: Request) {
       )
     }
 
-    const buffer = await file.arrayBuffer()
-    const wb = XLSX.read(buffer)
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    const data = XLSX.utils.sheet_to_json(ws)
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer as any)
+    const ws = workbook.worksheets[0]
+    
+    if (!ws) {
+      return NextResponse.json(
+        { success: false, error: "File has no worksheets" },
+        { status: 400 }
+      )
+    }
+
+    const data: any[] = []
+    const headers: any = {}
+
+    // Read headers from the first row
+    ws.getRow(1).eachCell((cell, colNumber) => {
+      headers[colNumber] = cell.value
+    })
+
+    // Read rows
+    ws.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return // skip header
+      const rowData: any = {}
+      row.eachCell((cell, colNumber) => {
+        rowData[headers[colNumber]] = cell.value
+      })
+      data.push(rowData)
+    })
 
     if (data.length === 0) {
       return NextResponse.json(
