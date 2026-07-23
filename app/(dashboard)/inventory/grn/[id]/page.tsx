@@ -57,7 +57,7 @@ export default async function GrnDetailPage({
       </div>
 
       {/* Header Details */}
-      <div className="grid grid-cols-4 gap-4 rounded-lg border bg-card p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 rounded-lg border bg-card p-6">
         <div>
           <p className="text-xs text-muted-foreground">Supplier</p>
           <p className="font-medium">{grn.supplier?.name || "—"}</p>
@@ -87,7 +87,7 @@ export default async function GrnDetailPage({
       </div>
 
       {/* Items Table */}
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">

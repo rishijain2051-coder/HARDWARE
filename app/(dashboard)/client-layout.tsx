@@ -322,6 +322,30 @@ function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
 
 function TopBar() {
   const { setCollapsed } = useSidebar();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  if (mobileSearchOpen) {
+    return (
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/50 glass px-4 lg:hidden">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            autoFocus
+            placeholder="Search products, SKU, suppliers..."
+            className="w-full rounded-full border border-input bg-white/50 py-2 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 transition-colors shadow-sm"
+          />
+        </div>
+        <button
+          onClick={() => setMobileSearchOpen(false)}
+          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          aria-label="Close search"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border/50 glass px-4 lg:px-6">
@@ -339,6 +363,15 @@ function TopBar() {
           Hardware ERP
         </h1>
       </div>
+
+      {/* Mobile search trigger */}
+      <button
+        onClick={() => setMobileSearchOpen(true)}
+        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+        aria-label="Open search"
+      >
+        <Search className="h-5 w-5" />
+      </button>
 
       {/* Search bar */}
       <div className="hidden lg:flex flex-1 items-center gap-4">

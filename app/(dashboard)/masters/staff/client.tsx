@@ -192,7 +192,7 @@ export function StaffClient({ data, canEdit }: { data: any[]; canEdit?: boolean 
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="employeeCode"
@@ -221,7 +221,7 @@ export function StaffClient({ data, canEdit }: { data: any[]; canEdit?: boolean 
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="phone"

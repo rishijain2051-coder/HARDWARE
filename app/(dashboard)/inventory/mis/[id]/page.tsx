@@ -52,7 +52,7 @@ export default async function MisDetailPage({
       </div>
 
       {/* Header Details */}
-      <div className="grid grid-cols-3 gap-4 rounded-lg border bg-card p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg border bg-card p-6">
         <div>
           <p className="text-xs text-muted-foreground">Recipient Type</p>
           <Badge variant="outline">{mis.recipientType}</Badge>
@@ -74,7 +74,7 @@ export default async function MisDetailPage({
       </div>
 
       {/* Items Table */}
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">

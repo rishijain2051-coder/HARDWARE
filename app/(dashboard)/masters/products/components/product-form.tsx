@@ -190,7 +190,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="categoryId"
@@ -248,7 +248,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="sku"
@@ -292,7 +292,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="minStock"
@@ -413,7 +413,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
           {relevantAttributes.length > 0 && (
             <div className="rounded-lg border bg-card p-6 space-y-4">
               <h3 className="text-lg font-semibold">Product Attributes</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {relevantAttributes.map((attr: any, idx: number) => {
                   const attrIndex = form
                     .getValues("attributes")
