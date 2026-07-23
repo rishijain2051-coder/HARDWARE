@@ -300,6 +300,7 @@ model HardwareProduct {
   purchaseHistory PurchaseHistory[]
   binStock        BinStock[]
 
+  @@unique([description, categoryId])
   @@index([categoryId])
   @@index([unitId])
   @@index([isActive])

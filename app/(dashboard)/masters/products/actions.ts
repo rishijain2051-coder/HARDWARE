@@ -116,6 +116,17 @@ export async function saveProduct(data: ProductFormValues) {
   try {
     if (id) {
       // Update
+      const duplicate = await prisma.hardwareProduct.findFirst({
+        where: {
+          description: { equals: description, mode: "insensitive" },
+          categoryId,
+          id: { not: id },
+        },
+      })
+      if (duplicate) {
+        return { success: false, error: `Product "${description}" already exists in this category (SKU: ${duplicate.sku})` }
+      }
+
       await prisma.$transaction(async (tx) => {
         await tx.hardwareProduct.update({
           where: { id },
@@ -160,10 +171,19 @@ export async function saveProduct(data: ProductFormValues) {
       // Create
       const finalSku = sku ? sku : await generateSku(categoryId)
 
-      // Check duplicate SKU
       const existing = await prisma.hardwareProduct.findUnique({ where: { sku: finalSku } })
       if (existing) {
         return { success: false, error: `SKU "${finalSku}" already exists` }
+      }
+
+      const duplicate = await prisma.hardwareProduct.findFirst({
+        where: {
+          description: { equals: description, mode: "insensitive" },
+          categoryId,
+        },
+      })
+      if (duplicate) {
+        return { success: false, error: `Product "${description}" already exists in this category (SKU: ${duplicate.sku})` }
       }
 
       await prisma.$transaction(async (tx) => {

@@ -122,7 +122,7 @@ export function ProductsClient({
         </div>
         {canEdit && (
           <Button asChild className="w-full sm:w-auto">
-            <Link href="/masters/products/new">
+            <Link href="/masters/products/create">
               <Plus className="mr-2 h-4 w-4" />
               New Product
             </Link>

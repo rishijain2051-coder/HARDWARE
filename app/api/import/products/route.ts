@@ -94,10 +94,11 @@ export async function POST(request: Request) {
       })
     }
 
-    // Process each row
+    const seen = new Set<string>()
+
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
-      
+
       try {
         const description = clean(row.Description)
         const catName = clean(row.Category)
@@ -106,6 +107,10 @@ export async function POST(request: Request) {
         if (!description) throw new Error("Description is required")
         if (!catName) throw new Error("Category is required")
         if (!unitName) throw new Error("Unit is required")
+
+        const dedupeKey = `${description.toLowerCase()}::${catName.toLowerCase()}`
+        if (seen.has(dedupeKey)) throw new Error(`Duplicate in file: "${description}" in category "${catName}"`)
+        seen.add(dedupeKey)
 
         await prisma.$transaction(async (tx) => {
           let category = await tx.category.findFirst({
@@ -151,6 +156,14 @@ export async function POST(request: Request) {
 
           const existing = await tx.hardwareProduct.findUnique({ where: { sku: sku } })
           if (existing) throw new Error(`SKU ${sku} already exists`)
+
+          const duplicate = await tx.hardwareProduct.findFirst({
+            where: {
+              description: { equals: description, mode: "insensitive" },
+              categoryId: category.id,
+            },
+          })
+          if (duplicate) throw new Error(`Product "${description}" already exists in category "${catName}" (SKU: ${duplicate.sku})`)
 
           const openingStock = cleanNum(row.OpeningStock)
           const minStock = cleanNum(row.MinStock)
