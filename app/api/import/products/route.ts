@@ -27,20 +27,31 @@ export async function POST(request: Request) {
     }
 
     const data: Record<string, unknown>[] = []
-    const headers: Record<number, unknown> = {}
+    const headers: Record<number, string> = {}
 
-    // Read headers from the first row
+    const HEADER_MAP: Record<string, string> = {
+      sku: "SKU",
+      description: "Description",
+      category: "Category",
+      unit: "Unit",
+      finish: "Finish",
+      size: "Size",
+      minstock: "MinStock",
+      openingstock: "OpeningStock",
+      "default bin": "Default Bin",
+      "defaultbin": "Default Bin",
+    }
+
     ws.getRow(1).eachCell((cell, colNumber) => {
-      headers[colNumber] = cell.value
+      const raw = String(cell.value).trim()
+      headers[colNumber] = HEADER_MAP[raw.toLowerCase()] || raw
     })
 
-    // Read rows
     ws.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return // skip header
+      if (rowNumber === 1) return
       const rowData: Record<string, unknown> = {}
       row.eachCell((cell, colNumber) => {
-        const headerName = String(headers[colNumber])
-        rowData[headerName] = cell.value
+        rowData[headers[colNumber]] = cell.value
       })
       data.push(rowData)
     })
@@ -50,6 +61,19 @@ export async function POST(request: Request) {
         { success: false, error: "File is empty" },
         { status: 400 }
       )
+    }
+
+    const EMPTY_VALUES = new Set(["", "-", "n/a", "na", "none", "nil", "null", "undefined"])
+    function clean(val: unknown): string | null {
+      if (val == null) return null
+      const s = String(val).trim()
+      return EMPTY_VALUES.has(s.toLowerCase()) ? null : s
+    }
+    function cleanNum(val: unknown): number {
+      const s = clean(val)
+      if (!s) return 0
+      const n = Number(s)
+      return isNaN(n) ? 0 : n
     }
 
     const errors: string[] = []
@@ -75,13 +99,15 @@ export async function POST(request: Request) {
       const row = data[i]
       
       try {
-        if (!row.Description) throw new Error("Description is required")
-        if (!row.Category) throw new Error("Category is required")
-        if (!row.Unit) throw new Error("Unit is required")
+        const description = clean(row.Description)
+        const catName = clean(row.Category)
+        const unitName = clean(row.Unit)
+
+        if (!description) throw new Error("Description is required")
+        if (!catName) throw new Error("Category is required")
+        if (!unitName) throw new Error("Unit is required")
 
         await prisma.$transaction(async (tx) => {
-          // Find or create Category
-          const catName = String(row.Category)
           let category = await tx.category.findFirst({
             where: { name: { equals: catName, mode: "insensitive" } }
           })
@@ -89,8 +115,6 @@ export async function POST(request: Request) {
             category = await tx.category.create({ data: { name: catName, isActive: true } })
           }
 
-          // Find or create Unit
-          const unitName = String(row.Unit)
           let unit = await tx.unit.findFirst({
             where: { abbreviation: { equals: unitName, mode: "insensitive" } }
           })
@@ -98,10 +122,9 @@ export async function POST(request: Request) {
             unit = await tx.unit.create({ data: { name: unitName, abbreviation: unitName, isActive: true } })
           }
 
-          // Find or create Bin
           let binId: string | null = null
-          if (row["Default Bin"]) {
-            const binName = String(row["Default Bin"])
+          const binName = clean(row["Default Bin"])
+          if (binName) {
             let bin = await tx.bin.findFirst({
               where: { name: { equals: binName, mode: "insensitive" } }
             })
@@ -111,8 +134,7 @@ export async function POST(request: Request) {
             binId = bin.id
           }
 
-          // Generate SKU if missing
-          let sku = row.SKU ? String(row.SKU) : null
+          let sku = clean(row.SKU)
           if (!sku) {
             const prefix = category.name.substring(0, 3).toUpperCase()
             const lastProduct = await tx.hardwareProduct.findFirst({
@@ -130,17 +152,17 @@ export async function POST(request: Request) {
           const existing = await tx.hardwareProduct.findUnique({ where: { sku: sku } })
           if (existing) throw new Error(`SKU ${sku} already exists`)
 
-          const openingStock = row.OpeningStock ? Number(row.OpeningStock) : 0
-          const minStock = row.MinStock ? Number(row.MinStock) : 0
+          const openingStock = cleanNum(row.OpeningStock)
+          const minStock = cleanNum(row.MinStock)
 
           const p = await tx.hardwareProduct.create({
             data: {
-              sku: sku,
-              description: String(row.Description),
+              sku,
+              description,
               categoryId: category.id,
               unitId: unit.id,
-              finish: row.Finish ? String(row.Finish) : null,
-              size: row.Size ? String(row.Size) : null,
+              finish: clean(row.Finish),
+              size: clean(row.Size),
               minStock,
               openingStock,
               currentStock: openingStock,
@@ -166,7 +188,8 @@ export async function POST(request: Request) {
         imported++
 
       } catch (err: unknown) {
-        errors.push(err instanceof Error ? err.message : String(err))
+        const msg = err instanceof Error ? err.message : String(err)
+        errors.push(`Row ${i + 2}: ${msg}`)
       }
     }
 
