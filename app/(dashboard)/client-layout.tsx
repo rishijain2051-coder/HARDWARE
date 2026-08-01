@@ -157,7 +157,6 @@ function NavLink({
 
 interface LayoutUser {
   name: string;
-  email: string;
   roleName: string;
 }
 

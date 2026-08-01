@@ -20,7 +20,13 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  // Header rows share TableRow, which carries a hover tint meant for data rows;
+  // neutralise it here so hovering the header doesn't light up like a record.
+  <thead
+    ref={ref}
+    className={cn("[&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+    {...props}
+  />
 ))
 TableHeader.displayName = "TableHeader"
 

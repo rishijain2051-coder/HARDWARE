@@ -23,9 +23,11 @@ export default async function DashboardLayout({
         isSuperAdmin: access.isSuperAdmin,
         isAuthenticated: access.isAuthenticated,
       }}
+      // Only what the sidebar actually renders — anything passed here is
+      // serialised into the RSC payload embedded in the page, so there's no
+      // reason to ship the email address when it isn't displayed.
       user={{
         name: user.name,
-        email: user.email,
         roleName: user.role.name,
       }}
     >

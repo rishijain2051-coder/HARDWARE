@@ -16,7 +16,8 @@
     "perms:migrate": "npx tsx scripts/migrate-permissions.ts",
     "perms:reset-roles": "npx tsx scripts/reset-builtin-roles.ts",
     "perms:verify": "npx tsx scripts/verify-permissions.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:scenarios": "npx tsx scripts/test-scenarios.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

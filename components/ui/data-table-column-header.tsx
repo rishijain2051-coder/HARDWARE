@@ -35,10 +35,17 @@ export function DataTableColumnHeader<TData, TValue>({
     <div className={cn("flex items-center space-x-2", className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
+          {/*
+            No negative margin and no hover block: `-ml-3` used to pull the
+            button 4px outside the cell's padding box, so in the first column
+            its rounded hover rectangle landed on the card's rounded-xl corner
+            and got sliced flat by the clip. Sitting flush with `px-0` keeps the
+            label aligned with the body cells and leaves the corner clean.
+          */}
           <Button
             variant="ghost"
             size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent"
+            className="h-8 px-0 font-medium hover:bg-transparent hover:text-foreground data-[state=open]:bg-transparent data-[state=open]:text-foreground"
           >
             <span>{title}</span>
             {column.getIsSorted() === "desc" ? (

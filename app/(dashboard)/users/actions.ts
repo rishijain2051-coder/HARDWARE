@@ -295,6 +295,12 @@ export async function saveUser(data: {
     return { success: false, error: "Missing required fields" }
   }
 
+  // Better Auth lower-cases the address before looking an account up at sign-in,
+  // so storing it verbatim would create a user who can never log in — entering
+  // "John.Doe@Company.com" here produced a permanently unusable account.
+  const email = data.email.trim().toLowerCase()
+  const name = data.name.trim()
+
   // Only a super admin may hand out the super-admin role, otherwise anyone with
   // user-management rights could promote themselves to unrestricted access.
   const targetRole = await prisma.role.findUnique({
@@ -323,26 +329,22 @@ export async function saveUser(data: {
   try {
     let userId = data.id
     if (userId) {
+      const clash = await prisma.user.findFirst({
+        where: { email, NOT: { id: userId } },
+        select: { id: true },
+      })
+      if (clash) return { success: false, error: "Another user already has this email" }
+
       await prisma.user.update({
         where: { id: userId },
-        data: {
-          name: data.name,
-          email: data.email,
-          roleId: data.roleId,
-          isActive: data.isActive,
-        },
+        data: { name, email, roleId: data.roleId, isActive: data.isActive },
       })
     } else {
-      const exists = await prisma.user.findUnique({ where: { email: data.email } })
+      const exists = await prisma.user.findUnique({ where: { email } })
       if (exists) return { success: false, error: "User with this email already exists" }
 
       const user = await prisma.user.create({
-        data: {
-          name: data.name,
-          email: data.email,
-          roleId: data.roleId,
-          isActive: data.isActive,
-        },
+        data: { name, email, roleId: data.roleId, isActive: data.isActive },
       })
       userId = user.id
     }
