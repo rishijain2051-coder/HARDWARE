@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import ExcelJS from "exceljs"
-import { guardRoute } from "@/lib/dal"
+import { getCurrentUser, guardRoute } from "@/lib/dal"
 
 export async function POST(request: Request) {
   // A bulk import writes to the product master, so it needs both the
@@ -10,6 +10,9 @@ export async function POST(request: Request) {
     (await guardRoute("DATA_TRANSFER", "IMPORT")) ??
     (await guardRoute("PRODUCT_MASTER", "CREATE"))
   if (denied) return denied
+
+  // Guaranteed non-null: guardRoute above returns 401 when there's no session.
+  const importedBy = (await getCurrentUser())!.id
 
   try {
     const formData = await request.formData()
@@ -87,21 +90,6 @@ export async function POST(request: Request) {
     const errors: string[] = []
     let imported = 0
     let updated = 0
-
-    let systemUser = await prisma.user.findUnique({ where: { email: "system@hardware.local" } })
-    if (!systemUser) {
-      let adminRole = await prisma.role.findFirst({ where: { name: "ADMIN" } })
-      if (!adminRole) {
-        adminRole = await prisma.role.create({ data: { name: "ADMIN", description: "Administrator" } })
-      }
-      systemUser = await prisma.user.create({
-        data: {
-          email: "system@hardware.local",
-          name: "System Migration",
-          roleId: adminRole.id,
-        }
-      })
-    }
 
     const seen = new Set<string>()
 
@@ -206,7 +194,11 @@ export async function POST(request: Request) {
               },
             })
 
-            if (openingStock > 0 && systemUser) {
+            // Attributed to whoever ran the import. This used to lazily create
+            // a synthetic "System Migration" user holding an ADMIN role, which
+            // manufactured a real super-admin account as a side effect of
+            // uploading a spreadsheet.
+            if (openingStock > 0) {
               await tx.storeLog.create({
                 data: {
                   transactionType: "OPENING",
@@ -214,7 +206,7 @@ export async function POST(request: Request) {
                   productId: p.id,
                   quantity: openingStock,
                   balanceAfter: openingStock,
-                  createdById: systemUser.id,
+                  createdById: importedBy,
                 },
               })
             }
