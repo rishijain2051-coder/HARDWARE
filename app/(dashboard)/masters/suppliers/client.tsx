@@ -30,6 +30,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { supplierSchema, SupplierFormValues } from "./schema"
 import { saveSupplier, deleteSupplier } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function SuppliersClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -40,6 +41,11 @@ export function SuppliersClient({ data }: { data: any[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Expand the optional section when the record being edited already has
+  // values in it, so nothing looks like it went missing. `formKey` remounts
+  // the section on each open so that default is re-applied.
+  const [hasOptionalData, setHasOptionalData] = useState(false)
+  const [formKey, setFormKey] = useState(0)
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
@@ -57,6 +63,18 @@ export function SuppliersClient({ data }: { data: any[] }) {
   const handleOpen = (supplier?: any) => {
     if (supplier ? !canEdit : !canCreate) return
     setError(null)
+    setFormKey((k) => k + 1)
+    setHasOptionalData(
+      Boolean(
+        supplier &&
+          (supplier.contactPerson ||
+            supplier.phone ||
+            supplier.email ||
+            supplier.gst ||
+            supplier.address ||
+            !supplier.isActive)
+      )
+    )
     if (supplier) {
       setEditingId(supplier.id)
       form.reset({
@@ -196,20 +214,22 @@ export function SuppliersClient({ data }: { data: any[] }) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               {error && <div className="text-sm text-destructive">{error}</div>}
               
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplier Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Acme Corp" autoFocus {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <OptionalFields key={formKey} count={6} defaultOpen={hasOptionalData}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supplier Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Acme Corp" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="contactPerson"
@@ -294,6 +314,7 @@ export function SuppliersClient({ data }: { data: any[] }) {
                   </FormItem>
                 )}
               />
+              </OptionalFields>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

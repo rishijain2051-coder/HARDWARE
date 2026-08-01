@@ -29,6 +29,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { staffSchema, StaffFormValues } from "./schema"
 import { saveStaff, deleteStaff } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function StaffClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -39,6 +40,10 @@ export function StaffClient({ data }: { data: any[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Expand the optional section when the record already has values in it, so
+  // nothing looks like it went missing. `formKey` remounts it on each open.
+  const [hasOptionalData, setHasOptionalData] = useState(false)
+  const [formKey, setFormKey] = useState(0)
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
@@ -54,6 +59,13 @@ export function StaffClient({ data }: { data: any[] }) {
   const handleOpen = (staff?: any) => {
     if (staff ? !canEdit : !canCreate) return
     setError(null)
+    setFormKey((k) => k + 1)
+    setHasOptionalData(
+      Boolean(
+        staff &&
+          (staff.department || staff.employeeCode || staff.phone || !staff.isActive)
+      )
+    )
     if (staff) {
       setEditingId(staff.id)
       form.reset({
@@ -196,13 +208,14 @@ export function StaffClient({ data }: { data: any[] }) {
                   <FormItem>
                     <FormLabel>Staff Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Jane Doe" {...field} />
+                      <Input placeholder="Jane Doe" autoFocus {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              <OptionalFields key={formKey} count={4} defaultOpen={hasOptionalData}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -264,6 +277,7 @@ export function StaffClient({ data }: { data: any[] }) {
                   )}
                 />
               </div>
+              </OptionalFields>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

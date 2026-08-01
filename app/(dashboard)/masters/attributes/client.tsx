@@ -36,6 +36,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { attributeSchema, AttributeFormValues } from "./schema"
 import { saveAttribute, deleteAttribute } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function AttributesClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -46,6 +47,10 @@ export function AttributesClient({ data }: { data: any[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Expand the optional section when the record already has values in it, so
+  // nothing looks like it went missing. `formKey` remounts it on each open.
+  const [hasOptionalData, setHasOptionalData] = useState(false)
+  const [formKey, setFormKey] = useState(0)
 
   const form = useForm<AttributeFormValues>({
     resolver: zodResolver(attributeSchema),
@@ -64,6 +69,10 @@ export function AttributesClient({ data }: { data: any[] }) {
 
   const handleOpen = (attribute?: any) => {
     if (attribute ? !canEdit : !canCreate) return
+    setFormKey((k) => k + 1)
+    setHasOptionalData(
+      Boolean(attribute && (attribute.isRequired || attribute.isSearchable))
+    )
     setError(null)
     if (attribute) {
       setEditingId(attribute.id)
@@ -253,6 +262,10 @@ export function AttributesClient({ data }: { data: any[] }) {
                 </FormItem>
               )}
 
+              {/* Options stays outside the collapsible group — it's conditionally
+                  required once the type is Dropdown, so hiding it would strand
+                  the user with an attribute that has no values to pick from. */}
+              <OptionalFields key={formKey} count={2} defaultOpen={hasOptionalData}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -289,6 +302,7 @@ export function AttributesClient({ data }: { data: any[] }) {
                   )}
                 />
               </div>
+              </OptionalFields>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

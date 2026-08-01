@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { OptionalFields } from "@/components/ui/optional-fields"
 
 import { productSchema, ProductFormValues } from "../schema"
 import { saveProduct } from "../actions"
@@ -88,6 +89,22 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
 
   const selectedCategoryId = form.watch("categoryId")
   const aliases = form.watch("aliases")
+
+  // A new product only needs a description, category, and unit — the SKU is
+  // generated and everything else has a sensible default. When editing, open
+  // the section if any of those fields is already populated.
+  const hasOptionalData =
+    isEditing &&
+    Boolean(
+      initialData.previousSku ||
+        initialData.finish ||
+        initialData.size ||
+        initialData.minStock ||
+        initialData.defaultBinId ||
+        !initialData.isActive ||
+        initialData.aliases?.length ||
+        initialData.attributeValues?.length
+    )
 
   // Filter attributes relevant to the selected category
   const relevantAttributes = lookups.attributes.filter(
@@ -182,6 +199,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
                   <FormControl>
                     <Input
                       placeholder="M.S. Round Bar 12mm"
+                      autoFocus={!isEditing}
                       {...field}
                     />
                   </FormControl>
@@ -247,6 +265,11 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
                 )}
               />
             </div>
+          </div>
+
+          <OptionalFields count={8} defaultOpen={hasOptionalData}>
+          <div className="rounded-lg border bg-card p-6 space-y-4">
+            <h3 className="text-lg font-semibold">Additional Details</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField
@@ -476,6 +499,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
               </div>
             </div>
           )}
+          </OptionalFields>
 
           {/* Actions */}
           <div className="flex justify-end gap-3">

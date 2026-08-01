@@ -29,6 +29,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { binSchema, BinFormValues } from "./schema"
 import { saveBin, deleteBin } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function BinsClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -39,6 +40,10 @@ export function BinsClient({ data }: { data: any[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Expand the optional section when the record already has values in it, so
+  // nothing looks like it went missing. `formKey` remounts it on each open.
+  const [hasOptionalData, setHasOptionalData] = useState(false)
+  const [formKey, setFormKey] = useState(0)
 
   const form = useForm<BinFormValues>({
     resolver: zodResolver(binSchema),
@@ -52,6 +57,8 @@ export function BinsClient({ data }: { data: any[] }) {
   const handleOpen = (bin?: any) => {
     if (bin ? !canEdit : !canCreate) return
     setError(null)
+    setFormKey((k) => k + 1)
+    setHasOptionalData(Boolean(bin && (bin.location || !bin.isActive)))
     if (bin) {
       setEditingId(bin.id)
       form.reset({
@@ -179,13 +186,14 @@ export function BinsClient({ data }: { data: any[] }) {
                   <FormItem>
                     <FormLabel>Bin Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="A1-Shelf-2" {...field} />
+                      <Input placeholder="A1-Shelf-2" autoFocus {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              <OptionalFields key={formKey} count={2} defaultOpen={hasOptionalData}>
               <FormField
                 control={form.control}
                 name="location"
@@ -217,6 +225,7 @@ export function BinsClient({ data }: { data: any[] }) {
                   </FormItem>
                 )}
               />
+              </OptionalFields>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
