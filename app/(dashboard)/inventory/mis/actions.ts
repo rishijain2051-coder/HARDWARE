@@ -2,9 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { authorize } from "@/lib/dal"
 
 async function generateMisNumber(): Promise<string> {
   const now = new Date()
@@ -25,6 +23,9 @@ async function generateMisNumber(): Promise<string> {
 }
 
 export async function getMisList() {
+  const gate = await authorize("OUTWARD_RECORD", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.misHeader.findMany({
     where: { isDeleted: false },
     include: {
@@ -38,6 +39,9 @@ export async function getMisList() {
 }
 
 export async function getMisById(id: string) {
+  const gate = await authorize("OUTWARD_RECORD", "VIEW")
+  if (!gate.success) return null
+
   return await prisma.misHeader.findUnique({
     where: { id },
     include: {
@@ -64,12 +68,13 @@ export async function saveMis(data: {
   staffId?: string
   purpose?: string
   items: MisItemInput[]
-  createdById: string
+  /** Ignored — attribution is taken from the session, not the client. */
+  createdById?: string
 }) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "OUTWARD_RECORD", "EDIT"))) return { success: false, error: "Unauthorized" }
-  const { recipientType, staffId, purpose, items, createdById } = data
+  const gate = await authorize("OUTWARD_RECORD", "CREATE")
+  if (!gate.success) return gate
+
+  const { recipientType, staffId, purpose, items } = data
 
   if (!recipientType) return { success: false, error: "Recipient type is required" }
   if (!items || items.length === 0) return { success: false, error: "At least one item is required" }
@@ -78,20 +83,8 @@ export async function saveMis(data: {
     const misNumber = await generateMisNumber()
 
     const result = await prisma.$transaction(async (tx) => {
-      let finalUserId = createdById
-      if (!finalUserId || finalUserId === "system") {
-        let sysUser = await tx.user.findFirst({ where: { email: "system@hardware.local" } })
-        if (!sysUser) {
-          let adminRole = await tx.role.findFirst({ where: { name: "ADMIN" } })
-          if (!adminRole) {
-            adminRole = await tx.role.create({ data: { name: "ADMIN", description: "Administrator" } })
-          }
-          sysUser = await tx.user.create({
-            data: { email: "system@hardware.local", name: "System", roleId: adminRole.id },
-          })
-        }
-        finalUserId = sysUser.id
-      }
+      // Attribution comes from the verified session — see saveGrn for why.
+      const finalUserId = gate.user.id
 
       // 1. Create MIS header
       const mis = await tx.misHeader.create({
@@ -171,16 +164,8 @@ export async function saveMis(data: {
 }
 
 export async function hardDeleteMis(id: string) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { role: true }
-  })
-  if (user?.role?.name !== "ADMIN" && user?.role?.name !== "Admin") {
-    return { success: false, error: "Only Administrators can permanently delete records." }
-  }
+  const gate = await authorize("OUTWARD_RECORD", "DELETE")
+  if (!gate.success) return gate
 
   try {
     const mis = await prisma.misHeader.findUnique({

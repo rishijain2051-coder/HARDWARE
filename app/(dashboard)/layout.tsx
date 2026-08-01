@@ -1,37 +1,35 @@
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { getUserPermissions } from "@/lib/permissions"
+import { redirect } from "next/navigation"
+
+import { getAccess, getCurrentUser } from "@/lib/dal"
 import ClientLayout from "./client-layout"
-import { prisma } from "@/lib/prisma"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
+  // The layout resolves the user for the chrome (sidebar, avatar); the actual
+  // authorisation for each screen happens in the page itself, because layouts
+  // are not re-rendered on client-side navigation between sibling routes.
+  const user = await getCurrentUser()
+  if (!user) redirect("/login")
 
-  let allowedModules: string[] = []
-  
-  if (session?.user) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: { role: true },
-    })
+  const access = await getAccess()
 
-    if (user?.role?.name === "ADMIN" || user?.role?.name === "Admin") {
-      // Admin sees everything
-      allowedModules = ["ALL"]
-    } else {
-      const perms = await getUserPermissions(session.user.id)
-      // Any module they have VIEW access to
-      allowedModules = perms
-        .filter((p) => p.action === "VIEW")
-        .map((p) => p.module)
-    }
-  }
-
-  return <ClientLayout allowedModules={allowedModules}>{children}</ClientLayout>
+  return (
+    <ClientLayout
+      access={{
+        keys: access.keys,
+        isSuperAdmin: access.isSuperAdmin,
+        isAuthenticated: access.isAuthenticated,
+      }}
+      user={{
+        name: user.name,
+        email: user.email,
+        roleName: user.role.name,
+      }}
+    >
+      {children}
+    </ClientLayout>
+  )
 }

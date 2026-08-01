@@ -9,7 +9,21 @@ import {
   Layers,
 } from "lucide-react"
 
-async function getDashboardStats() {
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
+import type { PermissionSet } from "@/lib/permissions"
+
+/**
+ * The dashboard aggregates data from several modules, so it is assembled from
+ * whatever the role is actually allowed to see. A clerk with no product access
+ * gets no stock figures — and, just as importantly, we never run the query.
+ */
+async function getDashboardStats(access: PermissionSet) {
+  const showProducts = access.canView("PRODUCT_MASTER")
+  const showGrn = access.canView("INWARD_RECORD")
+  const showMis = access.canView("OUTWARD_RECORD")
+  const showCategories = access.canView("CATEGORY_MASTER")
+
   const [
     totalProducts,
     activeProducts,
@@ -20,40 +34,48 @@ async function getDashboardStats() {
     recentMis,
     categoryBreakdown,
   ] = await Promise.all([
-    prisma.hardwareProduct.count(),
-    prisma.hardwareProduct.count({ where: { isActive: true } }),
-    prisma.hardwareProduct.count({
-      where: {
-        isActive: true,
-        currentStock: { lte: prisma.hardwareProduct.fields.minStock },
-        minStock: { gt: 0 },
-      },
-    }),
-    prisma.grnHeader.count({ where: { isDeleted: false } }),
-    prisma.misHeader.count({ where: { isDeleted: false } }),
-    prisma.grnHeader.findMany({
-      where: { isDeleted: false },
-      include: {
-        supplier: { select: { name: true } },
-        _count: { select: { items: true } },
-      },
-      orderBy: { date: "desc" },
-      take: 5,
-    }),
-    prisma.misHeader.findMany({
-      where: { isDeleted: false },
-      include: {
-        staff: { select: { name: true } },
-        _count: { select: { items: true } },
-      },
-      orderBy: { date: "desc" },
-      take: 5,
-    }),
-    prisma.hardwareProduct.groupBy({
-      by: ["categoryId"],
-      _count: { id: true },
-      where: { isActive: true },
-    }),
+    showProducts ? prisma.hardwareProduct.count() : 0,
+    showProducts ? prisma.hardwareProduct.count({ where: { isActive: true } }) : 0,
+    showProducts
+      ? prisma.hardwareProduct.count({
+          where: {
+            isActive: true,
+            currentStock: { lte: prisma.hardwareProduct.fields.minStock },
+            minStock: { gt: 0 },
+          },
+        })
+      : 0,
+    showGrn ? prisma.grnHeader.count({ where: { isDeleted: false } }) : 0,
+    showMis ? prisma.misHeader.count({ where: { isDeleted: false } }) : 0,
+    showGrn
+      ? prisma.grnHeader.findMany({
+          where: { isDeleted: false },
+          include: {
+            supplier: { select: { name: true } },
+            _count: { select: { items: true } },
+          },
+          orderBy: { date: "desc" },
+          take: 5,
+        })
+      : [],
+    showMis
+      ? prisma.misHeader.findMany({
+          where: { isDeleted: false },
+          include: {
+            staff: { select: { name: true } },
+            _count: { select: { items: true } },
+          },
+          orderBy: { date: "desc" },
+          take: 5,
+        })
+      : [],
+    showProducts && showCategories
+      ? prisma.hardwareProduct.groupBy({
+          by: ["categoryId"],
+          _count: { id: true },
+          where: { isActive: true },
+        })
+      : [],
   ])
 
   // Get category names
@@ -77,13 +99,19 @@ async function getDashboardStats() {
     recentGrns,
     recentMis,
     categoryData,
+    showProducts,
+    showGrn,
+    showMis,
   }
 }
 
 export default async function DashboardPage() {
+  const gate = await guardPage("DASHBOARD", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   let stats: any
   try {
-    stats = await getDashboardStats()
+    stats = await getDashboardStats(gate.access)
   } catch {
     stats = {
       totalProducts: 0,
@@ -94,6 +122,9 @@ export default async function DashboardPage() {
       recentGrns: [],
       recentMis: [],
       categoryData: [],
+      showProducts: false,
+      showGrn: false,
+      showMis: false,
     }
   }
 
@@ -101,6 +132,7 @@ export default async function DashboardPage() {
     {
       label: "Total Products",
       value: stats.totalProducts,
+      visible: stats.showProducts,
       icon: <Package className="h-5 w-5" />,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
@@ -108,6 +140,7 @@ export default async function DashboardPage() {
     {
       label: "Active Products",
       value: stats.activeProducts,
+      visible: stats.showProducts,
       icon: <Layers className="h-5 w-5" />,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
@@ -115,6 +148,7 @@ export default async function DashboardPage() {
     {
       label: "Low Stock Alerts",
       value: stats.lowStockCount,
+      visible: stats.showProducts,
       icon: <AlertTriangle className="h-5 w-5" />,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
@@ -122,6 +156,7 @@ export default async function DashboardPage() {
     {
       label: "Total GRNs",
       value: stats.totalGrns,
+      visible: stats.showGrn,
       icon: <TrendingUp className="h-5 w-5" />,
       color: "text-green-500",
       bg: "bg-green-500/10",
@@ -129,11 +164,12 @@ export default async function DashboardPage() {
     {
       label: "Total MIS",
       value: stats.totalMis,
+      visible: stats.showMis,
       icon: <TrendingDown className="h-5 w-5" />,
       color: "text-rose-500",
       bg: "bg-rose-500/10",
     },
-  ]
+  ].filter((card) => card.visible)
 
   return (
     <div className="space-y-6">
@@ -143,6 +179,12 @@ export default async function DashboardPage() {
           Overview of your hardware store inventory
         </p>
       </div>
+
+      {cards.length === 0 && (
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Your role doesn&apos;t have access to any of the figures shown here.
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -166,6 +208,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent GRNs */}
+        {stats.showGrn && (
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <FileInput className="h-5 w-5 text-green-500" />
@@ -199,8 +242,10 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Recent MIS */}
+        {stats.showMis && (
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <FileOutput className="h-5 w-5 text-rose-500" />
@@ -236,6 +281,7 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Category Breakdown */}

@@ -1,22 +1,27 @@
 import { UsersClient } from "./client"
 import { getUsers, getRoles, getPermissions } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function UsersPage() {
-  const [users, roles, permissions, session] = await Promise.all([
+  const gate = await guardPage("USER_MANAGEMENT", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
+  const [users, roles, permissions] = await Promise.all([
     getUsers(),
     getRoles(),
     getPermissions(),
-    auth.api.getSession({ headers: await headers() }),
   ])
-
-  const canEdit = session?.user ? await hasPermission(session.user.id, "USER_MANAGEMENT", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <UsersClient data={users} roles={roles} permissions={permissions} canEdit={canEdit} />
+      <UsersClient
+        data={users}
+        roles={roles}
+        permissions={permissions}
+        currentUserId={gate.user!.id}
+        currentRoleId={gate.user!.role.id}
+      />
     </div>
   )
 }

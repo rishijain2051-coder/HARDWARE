@@ -1,8 +1,12 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { authorize } from "@/lib/dal"
 
 export async function getLowStockReport() {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.hardwareProduct.findMany({
     where: {
       isActive: true,
@@ -17,6 +21,9 @@ export async function getLowStockReport() {
 }
 
 export async function getStockSummaryReport() {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.hardwareProduct.findMany({
     where: { isActive: true },
     include: {
@@ -39,6 +46,9 @@ export async function getPurchaseHistoryReport({
   dateFrom?: string
   dateTo?: string
 } = {}) {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   const where: any = {}
   if (productId) where.productId = productId
   if (supplierId) where.supplierId = supplierId
@@ -60,6 +70,9 @@ export async function getPurchaseHistoryReport({
 }
 
 export async function getSupplierWiseReport() {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   const [suppliers, purchaseData] = await Promise.all([
     prisma.supplier.findMany({
       where: { isActive: true },
@@ -91,6 +104,9 @@ export async function getSupplierWiseReport() {
 }
 
 export async function getCategoryStockReport() {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   const categories = await prisma.category.findMany({
     where: { isActive: true },
     include: {

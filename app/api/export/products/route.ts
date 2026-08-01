@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import ExcelJS from "exceljs"
+import { guardRoute } from "@/lib/dal"
 
 export async function GET() {
+  // Downloading the product master needs rights on the bulk-transfer screen
+  // *and* on the underlying data. This route was previously wide open.
+  const denied =
+    (await guardRoute("DATA_TRANSFER", "EXPORT")) ??
+    (await guardRoute("PRODUCT_MASTER", "EXPORT"))
+  if (denied) return denied
+
   const products = await prisma.hardwareProduct.findMany({
     include: {
       category: { select: { name: true } },

@@ -3,11 +3,12 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { supplierSchema, SupplierFormValues } from "./schema"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { authorize } from "@/lib/dal"
 
 export async function getSuppliers(search?: string) {
+  const gate = await authorize("SUPPLIER_MASTER", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.supplier.findMany({
     where: search
       ? { name: { contains: search, mode: "insensitive" } }
@@ -17,10 +18,6 @@ export async function getSuppliers(search?: string) {
 }
 
 export async function saveSupplier(data: SupplierFormValues) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "SUPPLIER_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
-
   const result = supplierSchema.safeParse(data)
   
   if (!result.success) {
@@ -28,6 +25,10 @@ export async function saveSupplier(data: SupplierFormValues) {
   }
 
   const { id, name, contactPerson, phone, email, gst, address, isActive } = result.data
+
+  // Creating and updating are separately grantable permissions.
+  const gate = await authorize("SUPPLIER_MASTER", id ? "EDIT" : "CREATE")
+  if (!gate.success) return gate
 
   try {
     if (id) {
@@ -48,9 +49,8 @@ export async function saveSupplier(data: SupplierFormValues) {
 }
 
 export async function deleteSupplier(id: string) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "SUPPLIER_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
+  const gate = await authorize("SUPPLIER_MASTER", "DELETE")
+  if (!gate.success) return gate
 
   try {
     await prisma.supplier.update({

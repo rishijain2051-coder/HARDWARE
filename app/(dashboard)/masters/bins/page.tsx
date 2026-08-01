@@ -1,18 +1,17 @@
 import { BinsClient } from "./client"
 import { getBins } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function BinsPage() {
+  const gate = await guardPage("BIN_MASTER", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const bins = await getBins()
-  
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <BinsClient data={bins} canEdit={canEdit} />
+      <BinsClient data={bins} />
     </div>
   )
 }

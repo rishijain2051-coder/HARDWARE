@@ -28,8 +28,14 @@ import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { binSchema, BinFormValues } from "./schema"
 import { saveBin, deleteBin } from "./actions"
+import { usePermissions } from "@/components/permission-provider"
 
-export function BinsClient({ data, canEdit }: { data: any[]; canEdit?: boolean }) {
+export function BinsClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("BIN_MASTER", "CREATE")
+  const canEdit = perms.can("BIN_MASTER", "EDIT")
+  const canDelete = perms.can("BIN_MASTER", "DELETE")
+
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +50,7 @@ export function BinsClient({ data, canEdit }: { data: any[]; canEdit?: boolean }
   })
 
   const handleOpen = (bin?: any) => {
-    if (!canEdit) return
+    if (bin ? !canEdit : !canCreate) return
     setError(null)
     if (bin) {
       setEditingId(bin.id)
@@ -76,7 +82,7 @@ export function BinsClient({ data, canEdit }: { data: any[]; canEdit?: boolean }
   }
 
   const handleDelete = async (id: string) => {
-    if (!canEdit) return
+    if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this bin?")) {
       await deleteBin(id)
     }
@@ -105,25 +111,30 @@ export function BinsClient({ data, canEdit }: { data: any[]; canEdit?: boolean }
         )
       },
     },
-    ...(canEdit ? [{
+    // The row-actions column disappears entirely for a read-only role.
+    ...(canEdit || canDelete ? [{
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpen(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpen(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     }] : []),
@@ -141,7 +152,7 @@ export function BinsClient({ data, canEdit }: { data: any[]; canEdit?: boolean }
         searchKey="name"
         searchPlaceholder="Search bins..."
         toolbarActions={
-          canEdit ? (
+          canCreate ? (
             <Button onClick={() => handleOpen()}>
               <Plus className="mr-2 h-4 w-4" />
               Add Bin

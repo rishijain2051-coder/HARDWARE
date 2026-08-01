@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signOut, useSession } from "@/lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 import {
   LayoutDashboard,
   Package,
@@ -21,11 +21,24 @@ import {
   MapPin,
   Search,
   FileSpreadsheet,
+  ArrowDownUp,
   Menu,
   X,
   Layers,
 } from "lucide-react";
 import Link from "next/link";
+
+import {
+  PermissionProvider,
+  usePermissions,
+  type SerializedAccess,
+} from "@/components/permission-provider";
+import {
+  filterNavTree,
+  NAV_TREE,
+  type NavIcon,
+  type NavNode,
+} from "@/lib/navigation";
 
 // Sidebar context for collapse state
 const SidebarContext = createContext<{
@@ -37,119 +50,38 @@ export function useSidebar() {
   return useContext(SidebarContext);
 }
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  module?: string;
-  children?: NavItem[];
-}
-
-const navItems: NavItem[] = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: <LayoutDashboard className="h-5 w-5" />,
-  },
-  {
-    label: "Inventory",
-    href: "/inventory",
-    icon: <Package className="h-5 w-5" />,
-    children: [
-      {
-        label: "Goods Receipt (GRN)",
-        href: "/inventory/grn",
-        icon: <FileInput className="h-4 w-4" />,
-        module: "INWARD_RECORD",
-      },
-      {
-        label: "Material Issue (MIS)",
-        href: "/inventory/mis",
-        icon: <FileOutput className="h-4 w-4" />,
-        module: "OUTWARD_RECORD",
-      },
-      {
-        label: "Store Log",
-        href: "/inventory/store-log",
-        icon: <ClipboardList className="h-4 w-4" />,
-        module: "STORE_LOG",
-      },
-    ],
-  },
-  {
-    label: "Masters",
-    href: "/masters",
-    icon: <Layers className="h-5 w-5" />,
-    children: [
-      {
-        label: "Products",
-        href: "/masters/products",
-        icon: <Wrench className="h-4 w-4" />,
-        module: "HARDWARE_MASTER",
-      },
-      {
-        label: "Categories",
-        href: "/masters/categories",
-        icon: <Tags className="h-4 w-4" />,
-        module: "HARDWARE_MASTER",
-      },
-      {
-        label: "Suppliers",
-        href: "/masters/suppliers",
-        icon: <Building2 className="h-4 w-4" />,
-        module: "SUPPLIER_MASTER",
-      },
-      {
-        label: "Staff",
-        href: "/masters/staff",
-        icon: <UserCircle className="h-4 w-4" />,
-        module: "STAFF_MASTER",
-      },
-      {
-        label: "Units",
-        href: "/masters/units",
-        icon: <Ruler className="h-4 w-4" />,
-        module: "HARDWARE_MASTER",
-      },
-      {
-        label: "Attributes",
-        href: "/masters/attributes",
-        icon: <Tags className="h-4 w-4" />,
-        module: "HARDWARE_MASTER",
-      },
-      {
-        label: "Bins",
-        href: "/masters/bins",
-        icon: <MapPin className="h-4 w-4" />,
-        module: "HARDWARE_MASTER",
-      },
-    ],
-  },
-  {
-    label: "Reports",
-    href: "/reports",
-    icon: <FileSpreadsheet className="h-5 w-5" />,
-    module: "REPORTS",
-  },
-  {
-    label: "Import / Export",
-    href: "/import-export",
-    icon: <FileSpreadsheet className="h-5 w-5" />,
-  },
-  {
-    label: "Users",
-    href: "/users",
-    icon: <Users className="h-5 w-5" />,
-    module: "USER_MANAGEMENT",
-  },
-];
+/**
+ * Icon components for the nav entries declared in `lib/navigation.ts`.
+ *
+ * The nav *structure* lives outside this file so that plain Node scripts (see
+ * `scripts/verify-permissions.ts`) can import it and exercise the very same
+ * `filterNavTree` the sidebar uses, instead of a duplicate that could drift.
+ */
+const NAV_ICONS: Record<NavIcon, React.ReactNode> = {
+  dashboard: <LayoutDashboard className="h-5 w-5" />,
+  inventory: <Package className="h-5 w-5" />,
+  grn: <FileInput className="h-4 w-4" />,
+  mis: <FileOutput className="h-4 w-4" />,
+  storeLog: <ClipboardList className="h-4 w-4" />,
+  masters: <Layers className="h-5 w-5" />,
+  product: <Wrench className="h-4 w-4" />,
+  category: <Tags className="h-4 w-4" />,
+  supplier: <Building2 className="h-4 w-4" />,
+  staff: <UserCircle className="h-4 w-4" />,
+  unit: <Ruler className="h-4 w-4" />,
+  attribute: <Tags className="h-4 w-4" />,
+  bin: <MapPin className="h-4 w-4" />,
+  reports: <FileSpreadsheet className="h-5 w-5" />,
+  dataTransfer: <ArrowDownUp className="h-5 w-5" />,
+  users: <Users className="h-5 w-5" />,
+};
 
 function NavLink({
   item,
   collapsed,
   depth = 0,
 }: {
-  item: NavItem;
+  item: NavNode;
   collapsed: boolean;
   depth?: number;
 }) {
@@ -179,7 +111,7 @@ function NavLink({
           }`}
           title={collapsed ? item.label : undefined}
         >
-          {item.icon}
+          {NAV_ICONS[item.icon]}
           {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
           {!collapsed && (
             <ChevronRight
@@ -217,16 +149,27 @@ function NavLink({
           : "text-sidebar-foreground hover:bg-sidebar-hover"
       }`}
     >
-      {item.icon}
+      {NAV_ICONS[item.icon]}
       {!collapsed && <span>{item.label}</span>}
     </Link>
   );
 }
 
-function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
+interface LayoutUser {
+  name: string;
+  email: string;
+  roleName: string;
+}
+
+function Sidebar({ user }: { user: LayoutUser }) {
   const { collapsed, setCollapsed } = useSidebar();
   const router = useRouter();
-  const { data: session } = useSession();
+  const perms = usePermissions();
+
+  const filteredNavItems = useMemo(
+    () => filterNavTree(NAV_TREE, perms),
+    [perms]
+  );
 
   async function handleLogout() {
     await signOut();
@@ -287,15 +230,20 @@ function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
             {filteredNavItems.map((item) => (
               <NavLink key={item.href} item={item} collapsed={collapsed} />
             ))}
+            {filteredNavItems.length === 0 && !collapsed && (
+              <p className="px-3 py-2 text-xs text-sidebar-muted">
+                No sections available for your role.
+              </p>
+            )}
           </div>
         </nav>
 
         {/* User section */}
-        {!collapsed && session?.user && (
+        {!collapsed && (
           <div className="border-t border-sidebar-hover p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-hover text-xs font-medium text-sidebar-foreground">
-                {session.user.name
+                {user.name
                   ?.split(" ")
                   .map((n: string) => n[0])
                   .join("")
@@ -304,10 +252,10 @@ function Sidebar({ filteredNavItems }: { filteredNavItems: NavItem[] }) {
               </div>
               <div className="flex-1 truncate">
                 <p className="truncate text-sm font-medium text-sidebar-foreground">
-                  {session.user.name}
+                  {user.name}
                 </p>
                 <p className="truncate text-[11px] text-sidebar-muted">
-                  {session.user.email}
+                  {user.roleName}
                 </p>
               </div>
               <button
@@ -395,44 +343,28 @@ function TopBar() {
 
 export default function DashboardLayout({
   children,
-  allowedModules,
+  access,
+  user,
 }: {
   children: React.ReactNode;
-  allowedModules: string[];
+  access: SerializedAccess;
+  user: LayoutUser;
 }) {
   const [collapsed, setCollapsed] = useState(true); // Start collapsed on mobile
 
-  // Filter items based on permissions
-  const filterNavItems = (items: NavItem[]): NavItem[] => {
-    return items
-      .map((item) => {
-        if (item.children) {
-          const filteredChildren = filterNavItems(item.children);
-          return { ...item, children: filteredChildren };
-        }
-        return item;
-      })
-      .filter((item) => {
-        if (item.children && item.children.length === 0) return false;
-        if (!item.module) return true; // Always show things like Dashboard without specific modules
-        if (allowedModules.includes("ALL")) return true;
-        return allowedModules.includes(item.module);
-      });
-  };
-
-  const filteredNavItems = filterNavItems(navItems);
-
   return (
-    <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar filteredNavItems={filteredNavItems} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-            {children}
-          </main>
+    <PermissionProvider access={access}>
+      <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
+        <div className="flex h-screen overflow-hidden bg-background">
+          <Sidebar user={user} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarContext.Provider>
+      </SidebarContext.Provider>
+    </PermissionProvider>
   );
 }

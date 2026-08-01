@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover"
 import { QuickAddProductModal } from "./quick-add-product-modal"
 import { useRouter } from "next/navigation"
+import { usePermissions } from "@/components/permission-provider"
 
 // Fuzzy token filter for Command
 function fuzzyFilter(value: string, search: string, keywords?: string[]) {
@@ -54,6 +55,11 @@ export function ProductCombobox({
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [quickAddOpen, setQuickAddOpen] = React.useState(false)
+
+  // Quick-add writes to the product master, which is a separate grant from
+  // being allowed to book a GRN or MIS. Hide it rather than let the user fill
+  // in the form and get rejected by `saveProduct`.
+  const canQuickAdd = usePermissions().can("PRODUCT_MASTER", "CREATE")
 
   // the selected product
   const selectedProduct = products.find((p) => p.id === value)
@@ -91,19 +97,21 @@ export function ProductCombobox({
             <CommandInput placeholder="Search product (e.g., screw 5/16)..." />
             <CommandList>
               <CommandEmpty className="p-4 flex flex-col items-center justify-center text-sm text-muted-foreground">
-                <p className="mb-4">No product found.</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => {
-                    setOpen(false)
-                    setQuickAddOpen(true)
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Quick Add Product
-                </Button>
+                <p className={canQuickAdd ? "mb-4" : ""}>No product found.</p>
+                {canQuickAdd && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setOpen(false)
+                      setQuickAddOpen(true)
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Quick Add Product
+                  </Button>
+                )}
               </CommandEmpty>
               <CommandGroup>
                 {products.map((product) => {
@@ -154,7 +162,7 @@ export function ProductCombobox({
       </Popover>
 
       <QuickAddProductModal
-        open={quickAddOpen}
+        open={quickAddOpen && canQuickAdd}
         onOpenChange={setQuickAddOpen}
         categories={categories}
         units={units}

@@ -29,7 +29,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      // "/" resolves to the first section this role is allowed to open, so a
+      // user without dashboard access doesn't land on a denial screen.
+      router.push("/");
       router.refresh();
     } catch {
       setError("An unexpected error occurred. Please try again.");

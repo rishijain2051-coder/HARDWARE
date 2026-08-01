@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { format } from "date-fns"
-import { Plus, Pencil, Shield } from "lucide-react"
+import { Plus, Pencil, Shield, ShieldCheck, Trash2, Lock } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -26,20 +25,31 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { saveUser, saveRole } from "./actions"
+
+import { usePermissions } from "@/components/permission-provider"
+import { PermissionMatrix, type PermissionRow } from "./permission-matrix"
+import { saveUser, saveRole, deleteRole } from "./actions"
 
 export function UsersClient({
   data,
   roles,
   permissions,
-  canEdit,
+  currentUserId,
+  currentRoleId,
 }: {
   data: any[]
   roles: any[]
-  permissions: any[]
-  canEdit: boolean
+  permissions: PermissionRow[]
+  currentUserId: string
+  currentRoleId: string
 }) {
   const router = useRouter()
+  const perms = usePermissions()
+
+  const canCreate = perms.can("USER_MANAGEMENT", "CREATE")
+  const canEdit = perms.can("USER_MANAGEMENT", "EDIT")
+  const canDelete = perms.can("USER_MANAGEMENT", "DELETE")
+  const isSuperAdmin = perms.isSuperAdmin
 
   // User Modal State
   const [userOpen, setUserOpen] = useState(false)
@@ -55,11 +65,14 @@ export function UsersClient({
   // Role Modal State
   const [roleOpen, setRoleOpen] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
+  const [editingRoleLocked, setEditingRoleLocked] = useState(false)
   const [roleName, setRoleName] = useState("")
   const [roleDesc, setRoleDesc] = useState("")
   const [rolePermissions, setRolePermissions] = useState<string[]>([])
   const [savingRole, setSavingRole] = useState(false)
   const [roleError, setRoleError] = useState<string | null>(null)
+
+  const isEditingOwnRole = editingRoleId === currentRoleId
 
   // -- User Handlers --
   const handleEditUser = (user: any) => {
@@ -75,10 +88,11 @@ export function UsersClient({
   }
 
   const handleCreateUser = () => {
+    if (!canCreate) return
     setEditingUserId(null)
     setUserName("")
     setUserEmail("")
-    setUserRoleId(roles[0]?.id || "")
+    setUserRoleId(assignableRoles[0]?.id || "")
     setUserIsActive(true)
     setUserPassword("")
     setUserError(null)
@@ -87,14 +101,14 @@ export function UsersClient({
 
   const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!canEdit) return
+    if (editingUserId ? !canEdit : !canCreate) return
     setUserError(null)
     setSavingUser(true)
-    
+
     if (!editingUserId && !userPassword) {
-        setUserError("Password is required for new users")
-        setSavingUser(false)
-        return
+      setUserError("Password is required for new users")
+      setSavingUser(false)
+      return
     }
 
     const res = await saveUser({
@@ -119,6 +133,8 @@ export function UsersClient({
   const handleEditRole = (role: any) => {
     if (!canEdit) return
     setEditingRoleId(role.id)
+    // The super-admin role has implicit full access; there is nothing to tick.
+    setEditingRoleLocked(Boolean(role.isSuperAdmin))
     setRoleName(role.name)
     setRoleDesc(role.description || "")
     setRolePermissions(role.permissions.map((p: any) => p.permissionId))
@@ -127,7 +143,9 @@ export function UsersClient({
   }
 
   const handleCreateRole = () => {
+    if (!canCreate) return
     setEditingRoleId(null)
+    setEditingRoleLocked(false)
     setRoleName("")
     setRoleDesc("")
     setRolePermissions([])
@@ -137,7 +155,8 @@ export function UsersClient({
 
   const handleRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!canEdit) return
+    if (editingRoleId ? !canEdit : !canCreate) return
+    if (editingRoleLocked) return
     setRoleError(null)
     setSavingRole(true)
 
@@ -157,27 +176,39 @@ export function UsersClient({
     setSavingRole(false)
   }
 
-  const togglePermission = (permId: string) => {
-    if (!canEdit) return
-    setRolePermissions((prev) =>
-      prev.includes(permId)
-        ? prev.filter((id) => id !== permId)
-        : [...prev, permId]
+  const handleDeleteRole = async (role: any) => {
+    if (!canDelete) return
+    if (
+      !confirm(
+        `Delete the "${role.name}" role? This cannot be undone.`
+      )
     )
+      return
+    const res = await deleteRole(role.id)
+    if (res.success) router.refresh()
+    else alert(res.error || "Failed to delete role")
   }
 
-  // Group permissions by module for the UI
-  const groupedPermissions = permissions.reduce((acc: any, perm: any) => {
-    if (!acc[perm.module]) acc[perm.module] = []
-    acc[perm.module].push(perm)
-    return acc
-  }, {} as Record<string, any[]>)
+  // Only a super admin can hand out the super-admin role — mirrors saveUser.
+  const assignableRoles = roles.filter((r) => isSuperAdmin || !r.isSuperAdmin)
+
+  /** Count of granted permissions, used for the at-a-glance role summary. */
+  const permissionCount = (role: any) =>
+    role.isSuperAdmin ? permissions.length : role.permissions.length
 
   // Columns
   const userColumns = [
     {
       accessorKey: "name",
       header: ({ column }: any) => <DataTableColumnHeader column={column} title="Name" />,
+      cell: ({ row }: any) => (
+        <div className="flex items-center gap-2 font-medium">
+          {row.original.name}
+          {row.original.id === currentUserId && (
+            <Badge variant="outline" className="text-[10px]">You</Badge>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "email",
@@ -187,8 +218,12 @@ export function UsersClient({
       accessorKey: "role",
       header: "Role",
       cell: ({ row }: any) => {
-        const rName = row.original.role?.name || "User"
-        return <Badge variant={rName === "ADMIN" ? "default" : "outline"}>{rName}</Badge>
+        const role = row.original.role
+        return (
+          <Badge variant={role?.isSuperAdmin ? "default" : "outline"}>
+            {role?.name || "—"}
+          </Badge>
+        )
       },
     },
     {
@@ -218,30 +253,77 @@ export function UsersClient({
       header: ({ column }: any) => <DataTableColumnHeader column={column} title="Role Name" />,
       cell: ({ row }: any) => (
         <div className="flex items-center gap-2 font-medium">
-          <Shield className="w-4 h-4 text-primary" />
+          {row.original.isSuperAdmin ? (
+            <ShieldCheck className="h-4 w-4 text-primary" />
+          ) : (
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          )}
           {row.getValue("name")}
+          {row.original.isSystem && (
+            <Badge variant="outline" className="text-[10px]">Built-in</Badge>
+          )}
         </div>
       ),
     },
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row }: any) => <div className="text-muted-foreground">{row.getValue("description") || "—"}</div>,
+      cell: ({ row }: any) => (
+        <div className="max-w-md text-muted-foreground">
+          {row.getValue("description") || "—"}
+        </div>
+      ),
+    },
+    {
+      id: "permissions",
+      header: "Permissions",
+      cell: ({ row }: any) =>
+        row.original.isSuperAdmin ? (
+          <Badge>Full access</Badge>
+        ) : (
+          <Badge variant="secondary">
+            {permissionCount(row.original)} of {permissions.length}
+          </Badge>
+        ),
     },
     {
       id: "usersCount",
       header: "Assigned Users",
-      cell: ({ row }: any) => <Badge variant="secondary">{row.original._count?.users || 0} Users</Badge>,
-    },
-    ...(canEdit ? [{
-      id: "actions",
       cell: ({ row }: any) => (
-        <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="icon" onClick={() => handleEditRole(row.original)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </div>
+        <Badge variant="secondary">{row.original._count?.users || 0} Users</Badge>
       ),
+    },
+    ...(canEdit || canDelete ? [{
+      id: "actions",
+      cell: ({ row }: any) => {
+        const role = row.original
+        const locked = role.isSuperAdmin
+        return (
+          <div className="flex items-center justify-end space-x-2">
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={locked}
+                title={locked ? "The administrator role always has full access" : "Edit role"}
+                onClick={() => handleEditRole(role)}
+              >
+                {locked ? <Lock className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+              </Button>
+            )}
+            {canDelete && !role.isSystem && !role.isSuperAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDeleteRole(role)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )
+      },
     }] : []),
   ]
 
@@ -250,18 +332,20 @@ export function UsersClient({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Access Management</h2>
-          <p className="text-sm text-muted-foreground">Manage system users, roles, and permissions</p>
+          <p className="text-sm text-muted-foreground">
+            Manage system users, roles, and permissions
+          </p>
         </div>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>
+          <TabsTrigger value="roles">Roles &amp; Permissions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
-          {canEdit && (
+          {canCreate && (
             <div className="flex justify-end">
               <Button onClick={handleCreateUser}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -273,7 +357,7 @@ export function UsersClient({
         </TabsContent>
 
         <TabsContent value="roles" className="space-y-4">
-          {canEdit && (
+          {canCreate && (
             <div className="flex justify-end">
               <Button onClick={handleCreateRole}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -311,19 +395,34 @@ export function UsersClient({
             </div>
             <div className="space-y-2">
               <Label>Role *</Label>
-              <Select value={userRoleId} onValueChange={setUserRoleId} required>
+              <Select
+                value={userRoleId}
+                onValueChange={setUserRoleId}
+                required
+                disabled={editingUserId === currentUserId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((r) => (
+                  {assignableRoles.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {editingUserId === currentUserId && (
+                <p className="text-xs text-muted-foreground">
+                  You can&apos;t change your own role — ask another administrator.
+                </p>
+              )}
             </div>
             <div className="flex items-center space-x-2 pt-2">
-              <Checkbox id="isActive" checked={userIsActive} onCheckedChange={(c) => setUserIsActive(c as boolean)} />
+              <Checkbox
+                id="isActive"
+                checked={userIsActive}
+                disabled={editingUserId === currentUserId}
+                onCheckedChange={(c) => setUserIsActive(c as boolean)}
+              />
               <Label htmlFor="isActive">Active (can log in)</Label>
             </div>
             <div className="flex justify-end gap-3 pt-4">
@@ -336,7 +435,7 @@ export function UsersClient({
 
       {/* Role Modal */}
       <Dialog open={roleOpen} onOpenChange={setRoleOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRoleId ? "Edit Role" : "Add Role"}</DialogTitle>
           </DialogHeader>
@@ -346,48 +445,68 @@ export function UsersClient({
                 {roleError}
               </div>
             )}
+
+            {editingRoleLocked && (
+              <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                This is the built-in administrator role. It bypasses every
+                permission check by design, so its grants can&apos;t be edited.
+              </div>
+            )}
+
+            {isEditingOwnRole && !editingRoleLocked && (
+              <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                This is your own role. Keep <strong>Users &amp; Roles →
+                View + Edit</strong> ticked, or you&apos;ll lose access to this
+                screen.
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Role Name *</Label>
-                <Input value={roleName} onChange={(e) => setRoleName(e.target.value)} required placeholder="e.g. Store Manager" />
+                <Input
+                  value={roleName}
+                  onChange={(e) => setRoleName(e.target.value)}
+                  required
+                  disabled={editingRoleLocked}
+                  placeholder="e.g. Store Manager"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Input value={roleDesc} onChange={(e) => setRoleDesc(e.target.value)} placeholder="Optional description" />
+                <Input
+                  value={roleDesc}
+                  onChange={(e) => setRoleDesc(e.target.value)}
+                  disabled={editingRoleLocked}
+                  placeholder="Optional description"
+                />
               </div>
             </div>
 
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-lg">Permissions</h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                {Object.entries(groupedPermissions).map(([module, perms]) => (
-                  <div key={module} className="bg-muted/30 p-4 rounded-lg border">
-                    <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      {module.replace("_", " ")}
-                    </h4>
-                    <div className="flex flex-wrap gap-4">
-                      {(perms as any[]).map((p: any) => (
-                        <div key={p.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={p.id}
-                            checked={rolePermissions.includes(p.id)}
-                            onCheckedChange={() => togglePermission(p.id)}
-                          />
-                          <Label htmlFor={p.id} className="text-sm font-normal cursor-pointer">
-                            {p.action}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            <div className="space-y-4 border-t pt-4">
+              <div>
+                <h3 className="text-lg font-semibold">Permissions</h3>
+                <p className="text-sm text-muted-foreground">
+                  Sections without <strong>View</strong> are removed from the
+                  sidebar entirely for this role.
+                </p>
               </div>
+
+              <PermissionMatrix
+                permissions={permissions}
+                selectedIds={rolePermissions}
+                onChange={setRolePermissions}
+                disabled={editingRoleLocked}
+              />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setRoleOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={savingRole}>{savingRole ? "Saving..." : "Save Role"}</Button>
+            <div className="flex justify-end gap-3 border-t pt-4">
+              <Button type="button" variant="outline" onClick={() => setRoleOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingRole || editingRoleLocked}>
+                {savingRole ? "Saving..." : "Save Role"}
+              </Button>
             </div>
           </form>
         </DialogContent>

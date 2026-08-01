@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import ExcelJS from "exceljs"
+import { guardRoute } from "@/lib/dal"
 
 export async function POST(request: Request) {
+  // A bulk import writes to the product master, so it needs both the
+  // import right and the right to create products.
+  const denied =
+    (await guardRoute("DATA_TRANSFER", "IMPORT")) ??
+    (await guardRoute("PRODUCT_MASTER", "CREATE"))
+  if (denied) return denied
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File

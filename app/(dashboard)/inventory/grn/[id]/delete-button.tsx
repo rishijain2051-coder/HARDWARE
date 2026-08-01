@@ -5,12 +5,14 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { hardDeleteGrn } from "../actions"
 import { useRouter } from "next/navigation"
+import { usePermissions } from "@/components/permission-provider"
 
-export function DeleteGrnButton({ id, canEdit }: { id: string; canEdit: boolean }) {
+export function DeleteGrnButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const perms = usePermissions()
 
-  if (!canEdit) return null
+  if (!perms.can("INWARD_RECORD", "DELETE")) return null
 
   const handleDelete = async () => {
     const isHardDelete = confirm(

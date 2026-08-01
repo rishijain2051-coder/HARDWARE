@@ -88,6 +88,10 @@ model Role {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  /// Bypasses every permission check. Reserved for the built-in Admin role.
+  isSuperAdmin Boolean @default(false)
+  /// Built-in role: cannot be renamed or deleted from the UI.
+  isSystem     Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

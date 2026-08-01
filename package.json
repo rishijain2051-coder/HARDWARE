@@ -13,6 +13,9 @@
     "db:seed": "npx prisma db seed",
     "db:studio": "npx prisma studio",
     "db:reset": "npx prisma migrate reset",
+    "perms:migrate": "npx tsx scripts/migrate-permissions.ts",
+    "perms:reset-roles": "npx tsx scripts/reset-builtin-roles.ts",
+    "perms:verify": "npx tsx scripts/verify-permissions.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -47,6 +50,7 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.82.0",
     "recharts": "^3.9.2",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },

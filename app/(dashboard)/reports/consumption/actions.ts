@@ -2,12 +2,16 @@
 
 import { prisma } from "@/lib/prisma"
 import { startOfDay, endOfDay } from "date-fns"
+import { authorize } from "@/lib/dal"
 
 export async function getConsumptionReport(filters: {
   startDate: Date
   endDate: Date
   staffId?: string
 }) {
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   const { startDate, endDate, staffId } = filters
 
   const whereCondition: any = {
@@ -80,6 +84,11 @@ export async function getConsumptionReport(filters: {
 }
 
 export async function getStaffList() {
+  // Used as a report filter, so REPORTS access is enough — this returns only
+  // names and departments, not the full staff master.
+  const gate = await authorize("REPORTS", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.staff.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },

@@ -1,7 +1,12 @@
 import { getLowStockReport } from "../actions"
 import { Badge } from "@/components/ui/badge"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function LowStockReportPage() {
+  const gate = await guardPage("REPORTS", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const products = await getLowStockReport()
   const lowStockProducts = products.filter(
     (p) => p.currentStock <= p.minStock

@@ -3,9 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { authorize } from "@/lib/dal"
 
 async function generateGrnNumber(): Promise<string> {
   const now = new Date()
@@ -26,6 +24,9 @@ async function generateGrnNumber(): Promise<string> {
 }
 
 export async function getGrnList() {
+  const gate = await authorize("INWARD_RECORD", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.grnHeader.findMany({
     where: { isDeleted: false },
     include: {
@@ -39,6 +40,9 @@ export async function getGrnList() {
 }
 
 export async function getGrnById(id: string) {
+  const gate = await authorize("INWARD_RECORD", "VIEW")
+  if (!gate.success) return null
+
   return await prisma.grnHeader.findUnique({
     where: { id },
     include: {
@@ -70,13 +74,13 @@ export async function saveGrn(data: {
   invoiceDate?: string
   remarks?: string
   items: GrnItemInput[]
-  createdById: string
+  /** Ignored — attribution is taken from the session, not the client. */
+  createdById?: string
 }) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "INWARD_RECORD", "EDIT"))) return { success: false, error: "Unauthorized" }
+  const gate = await authorize("INWARD_RECORD", "CREATE")
+  if (!gate.success) return gate
 
-  const { supplierId, invoiceNumber, invoiceDate, remarks, items, createdById } = data
+  const { supplierId, invoiceNumber, invoiceDate, remarks, items } = data
 
   if (!supplierId) return { success: false, error: "Supplier is required" }
   if (!items || items.length === 0) return { success: false, error: "At least one item is required" }
@@ -85,20 +89,10 @@ export async function saveGrn(data: {
     const grnNumber = await generateGrnNumber()
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      let finalUserId = createdById
-      if (!finalUserId || finalUserId === "system") {
-        let sysUser = await tx.user.findFirst({ where: { email: "system@hardware.local" } })
-        if (!sysUser) {
-          let adminRole = await tx.role.findFirst({ where: { name: "ADMIN" } })
-          if (!adminRole) {
-            adminRole = await tx.role.create({ data: { name: "ADMIN", description: "Administrator" } })
-          }
-          sysUser = await tx.user.create({
-            data: { email: "system@hardware.local", name: "System", roleId: adminRole.id },
-          })
-        }
-        finalUserId = sysUser.id
-      }
+      // Who booked the GRN is an audit fact, so it comes from the verified
+      // session. Previously a client could attribute the entry to anyone, and
+      // the fallback silently minted a synthetic admin-role "System" account.
+      const finalUserId = gate.user.id
 
       // 1. Create GRN header
       const grn = await tx.grnHeader.create({
@@ -211,7 +205,14 @@ export async function saveGrn(data: {
   }
 }
 
-export async function deleteGrn(id: string, reason: string, userId: string) {
+export async function deleteGrn(id: string, reason: string) {
+  // This previously had no authorisation check whatsoever: any caller could
+  // void a GRN and reverse its stock movements.
+  const gate = await authorize("INWARD_RECORD", "DELETE")
+  if (!gate.success) return gate
+
+  const userId = gate.user.id
+
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const grn = await tx.grnHeader.findUnique({
@@ -269,16 +270,8 @@ export async function deleteGrn(id: string, reason: string, userId: string) {
 }
 
 export async function hardDeleteGrn(id: string) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { role: true }
-  })
-  if (user?.role?.name !== "ADMIN" && user?.role?.name !== "Admin") {
-    return { success: false, error: "Only Administrators can permanently delete records." }
-  }
+  const gate = await authorize("INWARD_RECORD", "DELETE")
+  if (!gate.success) return gate
 
   try {
     const grn = await prisma.grnHeader.findUnique({

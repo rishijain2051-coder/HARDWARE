@@ -17,18 +17,22 @@ import {
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { deleteProduct } from "./actions"
+import { usePermissions } from "@/components/permission-provider"
 
 export function ProductsClient({
   data,
   categories,
-  canEdit,
 }: {
   data: any[]
   categories: any[]
-  canEdit?: boolean
 }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("PRODUCT_MASTER", "CREATE")
+  const canEdit = perms.can("PRODUCT_MASTER", "EDIT")
+  const canDelete = perms.can("PRODUCT_MASTER", "DELETE")
+
   const handleDelete = async (id: string) => {
-    if (!canEdit) return
+    if (!canDelete) return
     const hardDelete = confirm("Do you want to PERMANENTLY delete this product from the database?\n\nClick OK to permanently delete.\nClick Cancel to just deactivate it.")
     
     if (!hardDelete) {
@@ -89,23 +93,28 @@ export function ProductsClient({
         </Badge>
       ),
     },
-    ...(canEdit ? [{
+    // The row-actions column disappears entirely for a read-only role.
+    ...(canEdit || canDelete ? [{
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/masters/products/${row.original.id}/edit`}>
-              <Pencil className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/masters/products/${row.original.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     }] : []),
@@ -120,7 +129,7 @@ export function ProductsClient({
             Manage your hardware inventory items
           </p>
         </div>
-        {canEdit && (
+        {canCreate && (
           <Button asChild className="w-full sm:w-auto">
             <Link href="/masters/products/create">
               <Plus className="mr-2 h-4 w-4" />

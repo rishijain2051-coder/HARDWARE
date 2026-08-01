@@ -5,21 +5,20 @@ import { ArrowLeft } from "lucide-react"
 import { getGrnById } from "../actions"
 import { Badge } from "@/components/ui/badge"
 import { DeleteGrnButton } from "./delete-button"
-import { hasPermission } from "@/lib/permissions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function GrnDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const gate = await guardPage("INWARD_RECORD", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const { id } = await params
   const grn = await getGrnById(id)
   if (!grn) notFound()
-
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "INWARD_RECORD", "EDIT") : false
 
   const totalValue = grn.items.reduce(
     (sum: number, item: any) => sum + item.quantity * item.rate,
@@ -51,7 +50,7 @@ export default async function GrnDetailPage({
           </Badge>
         ) : (
           <div className="ml-auto">
-            <DeleteGrnButton id={grn.id} canEdit={canEdit} />
+            <DeleteGrnButton id={grn.id} />
           </div>
         )}
       </div>

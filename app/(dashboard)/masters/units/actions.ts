@@ -3,21 +3,18 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { unitSchema, UnitFormValues } from "./schema"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { authorize } from "@/lib/dal"
 
 export async function getUnits() {
+  const gate = await authorize("UNIT_MASTER", "VIEW")
+  if (!gate.success) return []
+
   return await prisma.unit.findMany({
     orderBy: { name: "asc" },
   })
 }
 
 export async function saveUnit(data: UnitFormValues) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
-
   const result = unitSchema.safeParse(data)
   
   if (!result.success) {
@@ -25,6 +22,10 @@ export async function saveUnit(data: UnitFormValues) {
   }
 
   const { id, name, abbreviation, isActive } = result.data
+
+  // Creating and updating are separately grantable permissions.
+  const gate = await authorize("UNIT_MASTER", id ? "EDIT" : "CREATE")
+  if (!gate.success) return gate
 
   try {
     if (id) {
@@ -48,9 +49,8 @@ export async function saveUnit(data: UnitFormValues) {
 }
 
 export async function deleteUnit(id: string) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
+  const gate = await authorize("UNIT_MASTER", "DELETE")
+  if (!gate.success) return gate
 
   try {
     await prisma.unit.update({

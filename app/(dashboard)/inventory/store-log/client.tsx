@@ -7,8 +7,12 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { hardDeleteStoreLog } from "./actions"
+import { usePermissions } from "@/components/permission-provider"
 
-export function StoreLogClient({ data, canEdit }: { data: any[]; canEdit: boolean }) {
+export function StoreLogClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canDelete = perms.can("STORE_LOG", "DELETE")
+
   const handleDelete = async (id: string) => {
     const isHardDelete = confirm(
       "Are you sure you want to PERMANENTLY delete this Store Log entry? This will rewrite the running balance for this product. Proceed?"
@@ -85,7 +89,7 @@ export function StoreLogClient({ data, canEdit }: { data: any[]; canEdit: boolea
       accessorFn: (row: any) =>
         row.supplier?.name || row.staff?.name || "—",
     },
-    ...(canEdit ? [{
+    ...(canDelete ? [{
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">

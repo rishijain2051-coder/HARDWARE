@@ -5,21 +5,20 @@ import { ArrowLeft } from "lucide-react"
 import { getMisById } from "../actions"
 import { Badge } from "@/components/ui/badge"
 import { DeleteMisButton } from "./delete-button"
-import { hasPermission } from "@/lib/permissions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function MisDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const gate = await guardPage("OUTWARD_RECORD", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const { id } = await params
   const mis = await getMisById(id)
   if (!mis) notFound()
-
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "OUTWARD_RECORD", "EDIT") : false
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -46,7 +45,7 @@ export default async function MisDetailPage({
           </Badge>
         ) : (
           <div className="ml-auto">
-            <DeleteMisButton id={mis.id} canEdit={canEdit} />
+            <DeleteMisButton id={mis.id} />
           </div>
         )}
       </div>

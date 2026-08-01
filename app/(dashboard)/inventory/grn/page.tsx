@@ -1,19 +1,17 @@
 import { GrnListClient } from "./client"
 import { getGrnList } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function GrnListPage() {
-  const [grns, session] = await Promise.all([
-    getGrnList(),
-    auth.api.getSession({ headers: await headers() }),
-  ])
-  const canEdit = session?.user ? await hasPermission(session.user.id, "INWARD_RECORD", "EDIT") : false
+  const gate = await guardPage("INWARD_RECORD", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
+  const grns = await getGrnList()
 
   return (
     <div className="flex flex-col gap-6">
-      <GrnListClient data={grns} canEdit={canEdit} />
+      <GrnListClient data={grns} />
     </div>
   )
 }

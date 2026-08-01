@@ -4,11 +4,24 @@ import { useState, useRef } from "react"
 import { Upload, Download, FileSpreadsheet, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { usePermissions } from "@/components/permission-provider"
 
 export function ImportExportClient() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<any>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Bulk transfer needs rights on *both* this screen and the underlying data:
+  // importing products writes to the product master, and each export reveals a
+  // whole table. The matching API routes enforce the same pairs server-side.
+  const perms = usePermissions()
+  const canImportProducts =
+    perms.can("DATA_TRANSFER", "IMPORT") && perms.can("PRODUCT_MASTER", "CREATE")
+  const canExportProducts =
+    perms.can("DATA_TRANSFER", "EXPORT") && perms.can("PRODUCT_MASTER", "EXPORT")
+  const canExportStoreLog =
+    perms.can("DATA_TRANSFER", "EXPORT") && perms.can("STORE_LOG", "EXPORT")
+  const canExportAnything = canExportProducts || canExportStoreLog
 
   const handleExportProducts = async () => {
     try {
@@ -74,8 +87,16 @@ export function ImportExportClient() {
         </p>
       </div>
 
+      {!canImportProducts && !canExportAnything && (
+        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Your role can open this section but has no import or export rights
+          yet. Ask an administrator to grant them from Users &amp; Roles.
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Import Card */}
+        {canImportProducts && (
         <div className="rounded-xl border bg-card p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-blue-500/10 p-3">
@@ -160,8 +181,10 @@ export function ImportExportClient() {
             </div>
           )}
         </div>
+        )}
 
         {/* Export Card */}
+        {canExportAnything && (
         <div className="rounded-xl border bg-card p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-green-500/10 p-3">
@@ -176,39 +199,44 @@ export function ImportExportClient() {
           </div>
 
           <div className="space-y-3">
-            <button
-              onClick={handleExportProducts}
-              className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/50"
-            >
-              <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Product Master</p>
-                <p className="text-xs text-muted-foreground">
-                  All products with stock levels
-                </p>
-              </div>
-              <Badge variant="outline" className="ml-auto">
-                .xlsx
-              </Badge>
-            </button>
+            {canExportProducts && (
+              <button
+                onClick={handleExportProducts}
+                className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/50"
+              >
+                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Product Master</p>
+                  <p className="text-xs text-muted-foreground">
+                    All products with stock levels
+                  </p>
+                </div>
+                <Badge variant="outline" className="ml-auto">
+                  .xlsx
+                </Badge>
+              </button>
+            )}
 
-            <button
-              onClick={handleExportStoreLog}
-              className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/50"
-            >
-              <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Store Log</p>
-                <p className="text-xs text-muted-foreground">
-                  Transaction history ledger
-                </p>
-              </div>
-              <Badge variant="outline" className="ml-auto">
-                .xlsx
-              </Badge>
-            </button>
+            {canExportStoreLog && (
+              <button
+                onClick={handleExportStoreLog}
+                className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/50"
+              >
+                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Store Log</p>
+                  <p className="text-xs text-muted-foreground">
+                    Transaction history ledger
+                  </p>
+                </div>
+                <Badge variant="outline" className="ml-auto">
+                  .xlsx
+                </Badge>
+              </button>
+            )}
           </div>
         </div>
+        )}
       </div>
     </div>
   )

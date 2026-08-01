@@ -1,18 +1,17 @@
 import { SuppliersClient } from "./client"
 import { getSuppliers } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function SuppliersPage() {
+  const gate = await guardPage("SUPPLIER_MASTER", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const suppliers = await getSuppliers()
-  
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "SUPPLIER_MASTER", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <SuppliersClient data={suppliers} canEdit={canEdit} />
+      <SuppliersClient data={suppliers} />
     </div>
   )
 }

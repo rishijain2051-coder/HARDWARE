@@ -1,18 +1,17 @@
 import { StaffClient } from "./client"
 import { getStaff } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function StaffPage() {
+  const gate = await guardPage("STAFF_MASTER", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const staff = await getStaff()
-  
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "STAFF_MASTER", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <StaffClient data={staff} canEdit={canEdit} />
+      <StaffClient data={staff} />
     </div>
   )
 }

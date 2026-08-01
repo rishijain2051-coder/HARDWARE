@@ -28,8 +28,14 @@ import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { categorySchema, CategoryFormValues } from "./schema"
 import { saveCategory, deleteCategory } from "./actions"
+import { usePermissions } from "@/components/permission-provider"
 
-export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boolean }) {
+export function CategoriesClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("CATEGORY_MASTER", "CREATE")
+  const canEdit = perms.can("CATEGORY_MASTER", "EDIT")
+  const canDelete = perms.can("CATEGORY_MASTER", "DELETE")
+
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +49,7 @@ export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boo
   })
 
   const handleOpen = (category?: any) => {
-    if (!canEdit) return
+    if (category ? !canEdit : !canCreate) return
     setError(null)
     if (category) {
       setEditingId(category.id)
@@ -73,7 +79,7 @@ export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boo
   }
 
   const handleDelete = async (id: string) => {
-    if (!canEdit) return
+    if (!canDelete) return
     if (confirm("Are you sure you want to permanently delete this category? This action cannot be undone.")) {
       const result = await deleteCategory(id)
       if (!result.success && result.error) {
@@ -101,25 +107,30 @@ export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boo
         )
       },
     },
-    ...(canEdit ? [{
+    // The row-actions column disappears entirely for a read-only role.
+    ...(canEdit || canDelete ? [{
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpen(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpen(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     }] : []),
@@ -137,7 +148,7 @@ export function CategoriesClient({ data, canEdit }: { data: any[]; canEdit?: boo
         searchKey="name"
         searchPlaceholder="Search categories..."
         toolbarActions={
-          canEdit ? (
+          canCreate ? (
             <Button onClick={() => handleOpen()}>
               <Plus className="mr-2 h-4 w-4" />
               Add Category

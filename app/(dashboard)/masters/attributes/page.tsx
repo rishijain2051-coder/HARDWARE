@@ -1,18 +1,17 @@
 import { AttributesClient } from "./client"
 import { getAttributes } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function AttributesPage() {
+  const gate = await guardPage("ATTRIBUTE_MASTER", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const attributes = await getAttributes()
-  
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <AttributesClient data={attributes} canEdit={canEdit} />
+      <AttributesClient data={attributes} />
     </div>
   )
 }

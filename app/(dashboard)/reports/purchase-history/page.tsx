@@ -1,7 +1,12 @@
 import { format } from "date-fns"
 import { getPurchaseHistoryReport } from "../actions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function PurchaseHistoryReportPage() {
+  const gate = await guardPage("REPORTS", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const history = await getPurchaseHistoryReport()
 
   return (

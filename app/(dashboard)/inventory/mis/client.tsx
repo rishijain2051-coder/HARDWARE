@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
+import { usePermissions } from "@/components/permission-provider"
 
-export function MisListClient({ data, canEdit }: { data: any[]; canEdit?: boolean }) {
+export function MisListClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("OUTWARD_RECORD", "CREATE")
+
   const columns = [
     {
       accessorKey: "misNumber",
@@ -84,7 +88,7 @@ export function MisListClient({ data, canEdit }: { data: any[]; canEdit?: boolea
         searchKey="misNumber"
         searchPlaceholder="Search by MIS number..."
         toolbarActions={
-          canEdit ? (
+          canCreate ? (
             <Button asChild>
               <Link href="/inventory/mis/create">
                 <Plus className="mr-2 h-4 w-4" />

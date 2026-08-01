@@ -1,7 +1,12 @@
 import { getCategoryStockReport } from "../actions"
 import { Badge } from "@/components/ui/badge"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function CategoryStockReportPage() {
+  const gate = await guardPage("REPORTS", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const categories = await getCategoryStockReport()
 
   return (

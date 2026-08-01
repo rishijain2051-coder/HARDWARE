@@ -2,8 +2,14 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import ExcelJS from "exceljs"
 import { format } from "date-fns"
+import { guardRoute } from "@/lib/dal"
 
 export async function GET() {
+  const denied =
+    (await guardRoute("DATA_TRANSFER", "EXPORT")) ??
+    (await guardRoute("STORE_LOG", "EXPORT"))
+  if (denied) return denied
+
   const logs = await prisma.storeLog.findMany({
     include: {
       product: { select: { sku: true, description: true } },

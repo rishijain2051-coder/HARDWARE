@@ -1,19 +1,17 @@
 import { MisListClient } from "./client"
 import { getMisList } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function MisListPage() {
-  const [misList, session] = await Promise.all([
-    getMisList(),
-    auth.api.getSession({ headers: await headers() }),
-  ])
-  const canEdit = session?.user ? await hasPermission(session.user.id, "OUTWARD_RECORD", "EDIT") : false
+  const gate = await guardPage("OUTWARD_RECORD", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
+  const misList = await getMisList()
 
   return (
     <div className="flex flex-col gap-6">
-      <MisListClient data={misList} canEdit={canEdit} />
+      <MisListClient data={misList} />
     </div>
   )
 }

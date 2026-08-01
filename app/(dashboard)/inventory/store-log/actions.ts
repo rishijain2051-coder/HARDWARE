@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { authorize } from "@/lib/dal"
 
 export async function getStoreLogs({
   productId,
@@ -13,6 +14,9 @@ export async function getStoreLogs({
   dateFrom?: string
   dateTo?: string
 } = {}) {
+  const gate = await authorize("STORE_LOG", "VIEW")
+  if (!gate.success) return []
+
   const where: any = {}
 
   if (productId) where.productId = productId
@@ -37,19 +41,8 @@ export async function getStoreLogs({
 }
 
 export async function hardDeleteStoreLog(id: string) {
-  const { auth } = await import("@/lib/auth")
-  const { headers } = await import("next/headers")
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { role: true }
-  })
-  
-  if (user?.role?.name !== "ADMIN" && user?.role?.name !== "Admin") {
-    return { success: false, error: "Only Administrators can permanently delete records." }
-  }
+  const gate = await authorize("STORE_LOG", "DELETE")
+  if (!gate.success) return gate
 
   try {
     const log = await prisma.storeLog.findUnique({ where: { id } })

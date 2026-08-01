@@ -3,9 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { productSchema, ProductFormValues } from "./schema"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { authorize } from "@/lib/dal"
 
 // Generate SKU: CAT-NNNN format
 async function generateSku(categoryId: string): Promise<string> {
@@ -37,6 +35,9 @@ export async function getProducts({
   categoryId?: string
   isActive?: boolean
 } = {}) {
+  const gate = await authorize("PRODUCT_MASTER", "VIEW")
+  if (!gate.success) return []
+
   const where: any = {}
 
   if (categoryId) where.categoryId = categoryId
@@ -72,6 +73,9 @@ export async function getProducts({
 }
 
 export async function getProductById(id: string) {
+  const gate = await authorize("PRODUCT_MASTER", "VIEW")
+  if (!gate.success) return null
+
   return await prisma.hardwareProduct.findUnique({
     where: { id },
     include: {
@@ -87,10 +91,6 @@ export async function getProductById(id: string) {
 }
 
 export async function saveProduct(data: ProductFormValues) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
-
   const result = productSchema.safeParse(data)
   if (!result.success) {
     return { success: false, error: result.error.issues[0]?.message || "Invalid data" }
@@ -110,6 +110,10 @@ export async function saveProduct(data: ProductFormValues) {
     aliases,
     attributes,
   } = result.data
+
+  // Creating and updating are separately grantable permissions.
+  const gate = await authorize("PRODUCT_MASTER", id ? "EDIT" : "CREATE")
+  if (!gate.success) return gate
 
   let { sku } = result.data
 
@@ -266,19 +270,14 @@ export async function saveProduct(data: ProductFormValues) {
 }
 
 export async function deleteProduct(id: string, hardDelete: boolean = false) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return { success: false, error: "Unauthorized" }
-  if (!(await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT"))) return { success: false, error: "Unauthorized" }
+  const gate = await authorize("PRODUCT_MASTER", "DELETE")
+  if (!gate.success) return gate
 
   try {
     if (hardDelete) {
-      // Check if user is admin
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { role: true }
-      })
-      if (user?.role?.name !== "ADMIN" && user?.role?.name !== "Admin") {
-        return { success: false, error: "Only Administrators can permanently delete records." }
+      // Irreversible removal, as opposed to deactivation, stays with super admins.
+      if (!gate.access.isSuperAdmin) {
+        return { success: false, error: "Only administrators can permanently delete records." }
       }
 
       await prisma.hardwareProduct.delete({
@@ -301,8 +300,12 @@ export async function deleteProduct(id: string, hardDelete: boolean = false) {
   }
 }
 
-// Lookup helpers for the form
+// Lookup helpers for the form. Gated on the product master rather than each
+// individual master, since these are reference lists needed to build a product.
 export async function getFormLookups() {
+  const gate = await authorize("PRODUCT_MASTER", "VIEW")
+  if (!gate.success) return { categories: [], units: [], bins: [], attributes: [] }
+
   const [categories, units, bins, attributes] = await Promise.all([
     prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.unit.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -313,6 +316,9 @@ export async function getFormLookups() {
 }
 
 export async function searchProducts(query: string) {
+  const gate = await authorize("PRODUCT_MASTER", "VIEW")
+  if (!gate.success) return []
+
   if (!query || query.length < 2) return []
 
   const tokens = query.toLowerCase().split(/[\s,]+/).filter(Boolean)

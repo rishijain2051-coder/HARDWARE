@@ -35,8 +35,14 @@ import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { attributeSchema, AttributeFormValues } from "./schema"
 import { saveAttribute, deleteAttribute } from "./actions"
+import { usePermissions } from "@/components/permission-provider"
 
-export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boolean }) {
+export function AttributesClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("ATTRIBUTE_MASTER", "CREATE")
+  const canEdit = perms.can("ATTRIBUTE_MASTER", "EDIT")
+  const canDelete = perms.can("ATTRIBUTE_MASTER", "DELETE")
+
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +63,7 @@ export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boo
   const [optionsText, setOptionsText] = useState("")
 
   const handleOpen = (attribute?: any) => {
-    if (!canEdit) return
+    if (attribute ? !canEdit : !canCreate) return
     setError(null)
     if (attribute) {
       setEditingId(attribute.id)
@@ -106,7 +112,7 @@ export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boo
   }
 
   const handleDelete = async (id: string) => {
-    if (!canEdit) return
+    if (!canDelete) return
     if (confirm("Are you sure you want to delete this attribute?")) {
       const result = await deleteAttribute(id)
       if (!result.success && result.error) {
@@ -136,25 +142,30 @@ export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boo
         </Badge>
       ),
     },
-    ...(canEdit ? [{
+    // The row-actions column disappears entirely for a read-only role.
+    ...(canEdit || canDelete ? [{
       id: "actions",
       cell: ({ row }: any) => (
         <div className="flex items-center justify-end space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpen(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpen(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     }] : []),
@@ -172,7 +183,7 @@ export function AttributesClient({ data, canEdit }: { data: any[]; canEdit?: boo
         searchKey="name"
         searchPlaceholder="Search attributes..."
         toolbarActions={
-          canEdit ? (
+          canCreate ? (
             <Button onClick={() => handleOpen()}>
               <Plus className="mr-2 h-4 w-4" />
               Add Attribute

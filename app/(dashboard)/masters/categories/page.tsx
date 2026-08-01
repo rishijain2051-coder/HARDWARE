@@ -1,18 +1,17 @@
 import { CategoriesClient } from "./client"
 import { getCategories } from "./actions"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { hasPermission } from "@/lib/permissions"
+import { guardPage } from "@/lib/dal"
+import { AccessDenied } from "@/components/access-denied"
 
 export default async function CategoriesPage() {
+  const gate = await guardPage("CATEGORY_MASTER", "VIEW")
+  if (!gate.allowed) return <AccessDenied {...gate.denial!} />
+
   const categories = await getCategories()
-  
-  const session = await auth.api.getSession({ headers: await headers() })
-  const canEdit = session?.user ? await hasPermission(session.user.id, "HARDWARE_MASTER", "EDIT") : false
 
   return (
     <div className="flex flex-col gap-6">
-      <CategoriesClient data={categories} canEdit={canEdit} />
+      <CategoriesClient data={categories} />
     </div>
   )
 }

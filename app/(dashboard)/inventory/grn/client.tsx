@@ -1,16 +1,19 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Plus, Eye, Trash2, FileInput } from "lucide-react"
+import { Plus, Eye } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
+import { usePermissions } from "@/components/permission-provider"
 
-export function GrnListClient({ data, canEdit }: { data: any[]; canEdit?: boolean }) {
+export function GrnListClient({ data }: { data: any[] }) {
+  const perms = usePermissions()
+  const canCreate = perms.can("INWARD_RECORD", "CREATE")
+
   const columns = [
     {
       accessorKey: "grnNumber",
@@ -83,7 +86,7 @@ export function GrnListClient({ data, canEdit }: { data: any[]; canEdit?: boolea
         searchKey="grnNumber"
         searchPlaceholder="Search by GRN number..."
         toolbarActions={
-          canEdit ? (
+          canCreate ? (
             <Button asChild>
               <Link href="/inventory/grn/create">
                 <Plus className="mr-2 h-4 w-4" />

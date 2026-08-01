@@ -1,5 +1,10 @@
 import { PrismaClient, AttributeType } from "@prisma/client";
-import { PERMISSION_MATRIX } from "../lib/permissions";
+import {
+  expandRoleTemplate,
+  PERMISSION_CATALOG,
+  permissionKey,
+  ROLE_TEMPLATES,
+} from "../lib/permissions";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -11,79 +16,77 @@ async function main() {
   console.log("🌱 Seeding database...\n");
 
   // ============================================================
-  // 1. Roles
+  // 1. Permissions (the full catalogue from the module registry)
   // ============================================================
-  console.log("  Creating roles...");
-  const adminRole = await prisma.role.upsert({
-    where: { name: "Admin" },
-    update: {},
-    create: {
-      name: "Admin",
-      description: "Full system access. Manage users, masters, transactions, and audit logs.",
-    },
-  });
-
-  const storeManagerRole = await prisma.role.upsert({
-    where: { name: "Store Manager" },
-    update: {},
-    create: {
-      name: "Store Manager",
-      description: "Create GRNs and MIS. View masters and dashboards. Cannot edit posted transactions.",
-    },
-  });
-  console.log(`    ✓ Admin (${adminRole.id})`);
-  console.log(`    ✓ Store Manager (${storeManagerRole.id})`);
-
-  // ============================================================
-  // 2. Permissions
-  // ============================================================
-  console.log("\n  Creating permissions...");
-  const allPermissions = new Set<string>();
-  for (const perms of Object.values(PERMISSION_MATRIX)) {
-    for (const p of perms) {
-      allPermissions.add(`${p.module}:${p.action}`);
-    }
-  }
-
+  console.log("  Creating permissions...");
   const permissionRecords: Record<string, string> = {};
-  for (const key of allPermissions) {
-    const [module, action] = key.split(":");
+  for (const p of PERMISSION_CATALOG) {
     const perm = await prisma.permission.upsert({
-      where: { module_action: { module, action } },
-      update: {},
+      where: { module_action: { module: p.module, action: p.action } },
+      update: { description: p.description },
       create: {
-        module,
-        action,
-        description: `${action} access to ${module}`,
+        module: p.module,
+        action: p.action,
+        description: p.description,
       },
     });
-    permissionRecords[key] = perm.id;
+    permissionRecords[permissionKey(p.module, p.action)] = perm.id;
   }
-  console.log(`    ✓ ${allPermissions.size} permissions created`);
+  console.log(`    ✓ ${PERMISSION_CATALOG.length} permissions synced`);
+
+  // Drop rows that the registry no longer defines so they can't linger on a
+  // role and quietly grant nothing (or, worse, look like they grant something).
+  const stale = await prisma.permission.findMany({
+    select: { id: true, module: true, action: true },
+  });
+  const staleIds = stale
+    .filter((p) => !permissionRecords[permissionKey(p.module, p.action)])
+    .map((p) => p.id);
+  if (staleIds.length > 0) {
+    await prisma.permission.deleteMany({ where: { id: { in: staleIds } } });
+    console.log(`    ✓ ${staleIds.length} obsolete permissions removed`);
+  }
 
   // ============================================================
-  // 3. Role-Permission Mappings
+  // 2. Roles + their permission grants
   // ============================================================
-  console.log("\n  Mapping permissions to roles...");
-  const roleMap: Record<string, string> = {
-    Admin: adminRole.id,
-    "Store Manager": storeManagerRole.id,
-  };
+  console.log("\n  Creating roles...");
+  for (const template of ROLE_TEMPLATES) {
+    const role = await prisma.role.upsert({
+      where: { name: template.name },
+      update: {
+        description: template.description,
+        isSuperAdmin: template.isSuperAdmin ?? false,
+        isSystem: template.isSystem ?? false,
+      },
+      create: {
+        name: template.name,
+        description: template.description,
+        isSuperAdmin: template.isSuperAdmin ?? false,
+        isSystem: template.isSystem ?? false,
+      },
+    });
 
-  for (const [roleName, perms] of Object.entries(PERMISSION_MATRIX)) {
-    for (const p of perms) {
-      const key = `${p.module}:${p.action}`;
-      const permId = permissionRecords[key];
-      const roleId = roleMap[roleName];
-
+    const grants = expandRoleTemplate(template);
+    for (const g of grants) {
+      const permissionId = permissionRecords[permissionKey(g.module, g.action)];
+      if (!permissionId) continue;
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId, permissionId: permId } },
+        where: { roleId_permissionId: { roleId: role.id, permissionId } },
         update: {},
-        create: { roleId, permissionId: permId },
+        create: { roleId: role.id, permissionId },
       });
     }
-    console.log(`    ✓ ${roleName}: ${perms.length} permissions mapped`);
+
+    console.log(
+      `    ✓ ${template.name}: ${grants.length} permissions` +
+        (template.isSuperAdmin ? " (super admin)" : "")
+    );
   }
+
+  const adminRole = await prisma.role.findUniqueOrThrow({
+    where: { name: "Admin" },
+  });
 
   // ============================================================
   // 4. Default Admin User (via Better Auth account)
