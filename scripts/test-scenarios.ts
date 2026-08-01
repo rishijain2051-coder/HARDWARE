@@ -38,6 +38,7 @@ import {
   type PermissionAction,
 } from "../lib/permissions"
 import { filterNavTree, NAV_TREE } from "../lib/navigation"
+import { TXN_LABELS } from "../lib/labels"
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000"
 const PW = "ZzTestPass123!"
@@ -512,7 +513,7 @@ function phaseA_permissionSemantics() {
   eq(G, "nav: single grant yields 1 group", nav.length, 1)
   eq(G, "nav: group is Inventory", nav[0]?.label, "Inventory")
   eq(G, "nav: group has 1 child", nav[0]?.children?.length, 1)
-  eq(G, "nav: child is GRN", nav[0]?.children?.[0]?.label, "Goods Receipt (GRN)")
+  eq(G, "nav: child is the inward entry", nav[0]?.children?.[0]?.label, TXN_LABELS.inward)
 
   const writeNoView = createPermissionSet({
     keys: [permissionKey("INWARD_RECORD", "CREATE")],

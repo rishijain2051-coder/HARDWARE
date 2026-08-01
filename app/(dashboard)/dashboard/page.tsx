@@ -12,6 +12,7 @@ import {
 import { guardPage } from "@/lib/dal"
 import { AccessDenied } from "@/components/access-denied"
 import type { PermissionSet } from "@/lib/permissions"
+import { TXN_LABELS } from "@/lib/labels"
 
 /**
  * The dashboard aggregates data from several modules, so it is assembled from
@@ -154,7 +155,7 @@ export default async function DashboardPage() {
       bg: "bg-amber-500/10",
     },
     {
-      label: "Total GRNs",
+      label: `कुल ${TXN_LABELS.inward}`,
       value: stats.totalGrns,
       visible: stats.showGrn,
       icon: <TrendingUp className="h-5 w-5" />,
@@ -162,7 +163,7 @@ export default async function DashboardPage() {
       bg: "bg-green-500/10",
     },
     {
-      label: "Total MIS",
+      label: `कुल ${TXN_LABELS.outward}`,
       value: stats.totalMis,
       visible: stats.showMis,
       icon: <TrendingDown className="h-5 w-5" />,
@@ -212,10 +213,10 @@ export default async function DashboardPage() {
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <FileInput className="h-5 w-5 text-green-500" />
-            Recent GRNs
+            हाल का {TXN_LABELS.inward}
           </h3>
           {stats.recentGrns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No GRNs recorded yet</p>
+            <p className="text-sm text-muted-foreground">अभी तक कोई {TXN_LABELS.inward} दर्ज नहीं</p>
           ) : (
             <div className="space-y-3">
               {stats.recentGrns.map((grn: any) => (
@@ -249,11 +250,11 @@ export default async function DashboardPage() {
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <FileOutput className="h-5 w-5 text-rose-500" />
-            Recent Material Issues
+            हाल का {TXN_LABELS.outward}
           </h3>
           {stats.recentMis.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No material issues recorded yet
+              अभी तक कोई {TXN_LABELS.outward} दर्ज नहीं
             </p>
           ) : (
             <div className="space-y-3">

@@ -1,6 +1,7 @@
 import { getSupplierWiseReport } from "../actions"
 import { guardPage } from "@/lib/dal"
 import { AccessDenied } from "@/components/access-denied"
+import { TXN_LABELS } from "@/lib/labels"
 
 export default async function SupplierWiseReportPage() {
   const gate = await guardPage("REPORTS", "VIEW")
@@ -22,7 +23,7 @@ export default async function SupplierWiseReportPage() {
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="px-4 py-3 text-left font-medium">Supplier</th>
-              <th className="px-4 py-3 text-right font-medium">Total GRNs</th>
+              <th className="px-4 py-3 text-right font-medium">कुल {TXN_LABELS.inward}</th>
               <th className="px-4 py-3 text-right font-medium">Total Purchases</th>
               <th className="px-4 py-3 text-right font-medium">Total Value</th>
             </tr>

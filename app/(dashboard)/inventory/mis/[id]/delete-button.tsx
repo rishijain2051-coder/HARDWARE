@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { hardDeleteMis } from "../actions"
 import { useRouter } from "next/navigation"
 import { usePermissions } from "@/components/permission-provider"
+import { TXN_LABELS } from "@/lib/labels"
 
 export function DeleteMisButton({ id }: { id: string }) {
   const [loading, setLoading] = useState(false)
@@ -16,7 +17,7 @@ export function DeleteMisButton({ id }: { id: string }) {
 
   const handleDelete = async () => {
     const isHardDelete = confirm(
-      "Are you sure you want to PERMANENTLY delete this MIS from the database? This action will also delete associated Store Logs and recalculate the ledger. It cannot be undone."
+      `Are you sure you want to PERMANENTLY delete this ${TXN_LABELS.outward} entry from the database? This action will also delete associated Store Logs and recalculate the ledger. It cannot be undone.`
     )
 
     if (isHardDelete) {

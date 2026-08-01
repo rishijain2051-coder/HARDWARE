@@ -1,3 +1,4 @@
+import { TXN_LABELS } from "./labels"
 import type { ModuleKey, PermissionSet } from "./permissions"
 
 /**
@@ -53,13 +54,13 @@ export const NAV_TREE: NavNode[] = [
     icon: "inventory",
     children: [
       {
-        label: "Goods Receipt (GRN)",
+        label: TXN_LABELS.inward,
         href: "/inventory/grn",
         icon: "grn",
         module: "INWARD_RECORD",
       },
       {
-        label: "Material Issue (MIS)",
+        label: TXN_LABELS.outward,
         href: "/inventory/mis",
         icon: "mis",
         module: "OUTWARD_RECORD",

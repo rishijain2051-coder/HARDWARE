@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { usePermissions } from "@/components/permission-provider"
+import { TXN_LABELS } from "@/lib/labels"
 
 export function MisListClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -18,7 +19,7 @@ export function MisListClient({ data }: { data: any[] }) {
     {
       accessorKey: "misNumber",
       header: ({ column }: any) => (
-        <DataTableColumnHeader column={column} title="MIS #" />
+        <DataTableColumnHeader column={column} title={`${TXN_LABELS.outward} #`} />
       ),
       cell: ({ row }: any) => (
         <span className="font-mono text-xs font-medium">
@@ -75,7 +76,7 @@ export function MisListClient({ data }: { data: any[] }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Material Issue Slips</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{TXN_LABELS.outward}</h2>
           <p className="text-sm text-muted-foreground">
             Track outgoing materials issued to departments
           </p>
@@ -86,13 +87,13 @@ export function MisListClient({ data }: { data: any[] }) {
         columns={columns}
         data={data}
         searchKey="misNumber"
-        searchPlaceholder="Search by MIS number..."
+        searchPlaceholder={`${TXN_LABELS.outward} नंबर से खोजें...`}
         toolbarActions={
           canCreate ? (
             <Button asChild>
               <Link href="/inventory/mis/create">
                 <Plus className="mr-2 h-4 w-4" />
-                New MIS
+                नया {TXN_LABELS.outward}
               </Link>
             </Button>
           ) : undefined

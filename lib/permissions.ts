@@ -10,6 +10,8 @@
  * Anything that needs the database lives in `lib/dal.ts`.
  */
 
+import { TXN_LABELS } from "./labels"
+
 // ============================================================
 // Actions
 // ============================================================
@@ -117,7 +119,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
 
   INWARD_RECORD: define({
     key: "INWARD_RECORD",
-    label: "Goods Receipt (GRN)",
+    label: TXN_LABELS.inward,
     group: "Inventory",
     description: "Inward stock entries received against supplier invoices",
     actions: ["VIEW", "CREATE", "EDIT", "DELETE", "EXPORT"],
@@ -126,7 +128,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
 
   OUTWARD_RECORD: define({
     key: "OUTWARD_RECORD",
-    label: "Material Issue (MIS)",
+    label: TXN_LABELS.outward,
     group: "Inventory",
     description: "Outward stock issued to staff or departments",
     actions: ["VIEW", "CREATE", "EDIT", "DELETE", "EXPORT"],
@@ -432,7 +434,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   {
     name: "Store Manager",
     description:
-      "Runs day-to-day stores: books and corrects GRN/MIS, maintains masters, reads every report.",
+      `Runs day-to-day stores: books and corrects ${TXN_LABELS.inward}/${TXN_LABELS.outward}, maintains masters, reads every report.`,
     isSystem: true,
     permissions: {
       DASHBOARD: ["VIEW"],

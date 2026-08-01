@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { saveGrn } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
+import { TXN_LABELS } from "@/lib/labels"
 
 interface LineItem {
   productId: string
@@ -141,7 +142,7 @@ export function GrnCreateClient({
         router.push("/inventory/grn")
         router.refresh()
       } else {
-        setError(result.error || "Failed to save GRN")
+        setError(result.error || `${TXN_LABELS.inward} सेव नहीं हो सका`)
       }
     } finally {
       setSaving(false)
@@ -157,7 +158,7 @@ export function GrnCreateClient({
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight">New GRN</h2>
+        <h2 className="text-2xl font-bold tracking-tight">नया {TXN_LABELS.inward}</h2>
       </div>
 
       {error && (
@@ -168,7 +169,7 @@ export function GrnCreateClient({
 
       {/* Header */}
       <div className="rounded-lg border bg-card p-6 space-y-4">
-        <h3 className="text-lg font-semibold">GRN Header</h3>
+        <h3 className="text-lg font-semibold">{TXN_LABELS.inward}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium">Supplier *</label>
@@ -423,7 +424,7 @@ export function GrnCreateClient({
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
-          {saving ? "Saving..." : "Save GRN"}
+          {saving ? "Saving..." : "Save"}
         </Button>
       </div>
     </div>

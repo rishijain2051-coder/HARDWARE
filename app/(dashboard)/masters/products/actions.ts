@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { productSchema, ProductFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
+import { TXN_LABELS } from "@/lib/labels"
 
 // Generate SKU: CAT-NNNN format
 async function generateSku(categoryId: string): Promise<string> {
@@ -227,31 +228,20 @@ export async function saveProduct(data: ProductFormValues) {
           })
         }
 
-        // If opening stock > 0, create store log entry
+        // If opening stock > 0, create store log entry.
+        // Attributed to the signed-in user. This used to lazily create a
+        // synthetic "System" account holding an ADMIN role — a real super-admin
+        // row, complete with a login, minted as a side effect of adding a
+        // product. The same pattern was removed from saveGrn/saveMis.
         if (openingStock > 0) {
-          let systemUser = await tx.user.findFirst({ where: { email: "system@hardware.local" } })
-          if (!systemUser) {
-            let adminRole = await tx.role.findFirst({ where: { name: "ADMIN" } })
-            if (!adminRole) {
-              adminRole = await tx.role.create({ data: { name: "ADMIN", description: "Administrator" } })
-            }
-            systemUser = await tx.user.create({
-              data: {
-                email: "system@hardware.local",
-                name: "System",
-                roleId: adminRole.id,
-              },
-            })
-          }
-
           await tx.storeLog.create({
             data: {
               transactionType: "OPENING",
-              referenceNumber: `OPENING-${sku}`,
+              referenceNumber: `OPENING-${finalSku}`,
               productId: product.id,
               quantity: openingStock,
               balanceAfter: openingStock,
-              createdById: systemUser.id,
+              createdById: gate.user.id,
             },
           })
         }
@@ -294,7 +284,7 @@ export async function deleteProduct(id: string, hardDelete: boolean = false) {
     return { success: true }
   } catch (error: any) {
     if (error.code === 'P2003') {
-      return { success: false, error: "Cannot permanently delete this product because it has existing transactions (GRN, MIS, or Logs). Delete the transactions first." }
+      return { success: false, error: `Cannot permanently delete this product because it has existing transactions (${TXN_LABELS.inward}, ${TXN_LABELS.outward}, or Logs). Delete the transactions first.` }
     }
     return { success: false, error: hardDelete ? "Failed to permanently delete product" : "Failed to deactivate product" }
   }

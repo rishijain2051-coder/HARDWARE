@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { authorize } from "@/lib/dal"
+import { TXN_LABELS } from "@/lib/labels"
 
 async function generateMisNumber(): Promise<string> {
   const now = new Date()
@@ -159,7 +160,7 @@ export async function saveMis(data: {
     return { success: true, misNumber: result.misNumber }
   } catch (error: any) {
     console.error("MIS save error:", error)
-    return { success: false, error: error.message || "Failed to save MIS" }
+    return { success: false, error: error.message || `${TXN_LABELS.outward} सेव नहीं हो सका` }
   }
 }
 
@@ -172,7 +173,7 @@ export async function hardDeleteMis(id: string) {
       where: { id },
       include: { items: true }
     })
-    if (!mis) return { success: false, error: "MIS not found" }
+    if (!mis) return { success: false, error: `${TXN_LABELS.outward} नहीं मिला` }
 
     const productIdsToRebuild = new Set(mis.items.map(item => item.productId))
 
@@ -208,6 +209,6 @@ export async function hardDeleteMis(id: string) {
     return { success: true }
   } catch (error: any) {
     console.error("Hard delete MIS error:", error)
-    return { success: false, error: "Failed to permanently delete MIS" }
+    return { success: false, error: `${TXN_LABELS.outward} स्थायी रूप से डिलीट नहीं हो सका` }
   }
 }

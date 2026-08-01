@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { authorize } from "@/lib/dal"
+import { TXN_LABELS } from "@/lib/labels"
 
 async function generateGrnNumber(): Promise<string> {
   const now = new Date()
@@ -201,7 +202,7 @@ export async function saveGrn(data: {
     return { success: true, grnNumber: result.grnNumber }
   } catch (error: any) {
     console.error("GRN save error:", error)
-    return { success: false, error: "Failed to save GRN" }
+    return { success: false, error: `${TXN_LABELS.inward} सेव नहीं हो सका` }
   }
 }
 
@@ -219,7 +220,7 @@ export async function deleteGrn(id: string, reason: string) {
         where: { id },
         include: { items: true },
       })
-      if (!grn) throw new Error("GRN not found")
+      if (!grn) throw new Error(`${TXN_LABELS.inward} नहीं मिला`)
 
       // Reverse stock for each item
       for (const item of grn.items) {
@@ -265,7 +266,7 @@ export async function deleteGrn(id: string, reason: string) {
     revalidatePath("/inventory/grn")
     return { success: true }
   } catch (error) {
-    return { success: false, error: "Failed to delete GRN" }
+    return { success: false, error: `${TXN_LABELS.inward} डिलीट नहीं हो सका` }
   }
 }
 
@@ -278,7 +279,7 @@ export async function hardDeleteGrn(id: string) {
       where: { id },
       include: { items: true }
     })
-    if (!grn) return { success: false, error: "GRN not found" }
+    if (!grn) return { success: false, error: `${TXN_LABELS.inward} नहीं मिला` }
 
     const productIdsToRebuild = new Set(grn.items.map(item => item.productId))
 
@@ -315,6 +316,6 @@ export async function hardDeleteGrn(id: string) {
     return { success: true }
   } catch (error: any) {
     console.error("Hard delete GRN error:", error)
-    return { success: false, error: "Failed to permanently delete GRN" }
+    return { success: false, error: `${TXN_LABELS.inward} स्थायी रूप से डिलीट नहीं हो सका` }
   }
 }

@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { hardDeleteStoreLog } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { transactionTypeLabel } from "@/lib/labels"
 
 export function StoreLogClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -45,7 +46,8 @@ export function StoreLogClient({ data }: { data: any[] }) {
             : type === "MIS"
             ? "secondary"
             : "outline"
-        return <Badge variant={variant as any}>{type}</Badge>
+        // The enum value is unchanged in the database; only the label is translated.
+        return <Badge variant={variant as any}>{transactionTypeLabel(type as string)}</Badge>
       },
     },
     {

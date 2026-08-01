@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { saveMis } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
+import { TXN_LABELS } from "@/lib/labels"
 
 interface LineItem {
   productId: string
@@ -95,7 +96,7 @@ export function MisCreateClient({
         router.push("/inventory/mis")
         router.refresh()
       } else {
-        setError(result.error || "Failed to save MIS")
+        setError(result.error || `${TXN_LABELS.outward} सेव नहीं हो सका`)
       }
     } finally {
       setSaving(false)
@@ -111,7 +112,7 @@ export function MisCreateClient({
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight">New Material Issue</h2>
+        <h2 className="text-2xl font-bold tracking-tight">नया {TXN_LABELS.outward}</h2>
       </div>
 
       {error && (
@@ -122,7 +123,7 @@ export function MisCreateClient({
 
       {/* Header */}
       <div className="rounded-lg border bg-card p-6 space-y-4">
-        <h3 className="text-lg font-semibold">MIS Header</h3>
+        <h3 className="text-lg font-semibold">{TXN_LABELS.outward}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium">Recipient Type *</label>
@@ -342,7 +343,7 @@ export function MisCreateClient({
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
-          {saving ? "Saving..." : "Save MIS"}
+          {saving ? "Saving..." : "Save"}
         </Button>
       </div>
     </div>

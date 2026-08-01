@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { usePermissions } from "@/components/permission-provider"
+import { TXN_LABELS } from "@/lib/labels"
 
 export function GrnListClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -18,7 +19,7 @@ export function GrnListClient({ data }: { data: any[] }) {
     {
       accessorKey: "grnNumber",
       header: ({ column }: any) => (
-        <DataTableColumnHeader column={column} title="GRN #" />
+        <DataTableColumnHeader column={column} title={`${TXN_LABELS.inward} #`} />
       ),
       cell: ({ row }: any) => (
         <span className="font-mono text-xs font-medium">
@@ -73,7 +74,7 @@ export function GrnListClient({ data }: { data: any[] }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Goods Receipt Notes</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{TXN_LABELS.inward}</h2>
           <p className="text-sm text-muted-foreground">
             Track incoming hardware from suppliers
           </p>
@@ -84,13 +85,13 @@ export function GrnListClient({ data }: { data: any[] }) {
         columns={columns}
         data={data}
         searchKey="grnNumber"
-        searchPlaceholder="Search by GRN number..."
+        searchPlaceholder={`${TXN_LABELS.inward} नंबर से खोजें...`}
         toolbarActions={
           canCreate ? (
             <Button asChild>
               <Link href="/inventory/grn/create">
                 <Plus className="mr-2 h-4 w-4" />
-                New GRN
+                नया {TXN_LABELS.inward}
               </Link>
             </Button>
           ) : undefined
