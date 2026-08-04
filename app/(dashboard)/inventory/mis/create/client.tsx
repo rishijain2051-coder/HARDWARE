@@ -17,7 +17,7 @@ import {
 import { saveMis } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
 import { TXN_LABELS } from "@/lib/labels"
-import { invalidateLookups, useLookup } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 
 interface LineItem {
   productId: string
@@ -33,9 +33,9 @@ export function MisCreateClient() {
   // Read from the browser cache instead of the page payload. All three are
   // requested in one batched call when the cache is cold, and the product list
   // is shared with the combobox on every line item.
-  const { rows: staff, loading: loadingStaff } = useLookup("staff")
-  const { rows: bins } = useLookup("bins")
-  const { rows: products } = useLookup("products")
+  const { rows: staff, loading: loadingStaff } = useDatasetRows("staff")
+  const { rows: bins } = useDatasetRows("bins")
+  const { rows: products } = useDatasetRows("products")
 
   const [recipientType, setRecipientType] = useState("")
   const [staffId, setStaffId] = useState("")
@@ -86,9 +86,9 @@ export function MisCreateClient() {
       })
 
       if (result.success) {
-        // Issuing stock lowers currentStock on each product, and that figure is
-        // shown in the combobox, so the cached list has to go.
-        invalidateLookups("products")
+        // Issuing stock moves the entry list, the ledger, the dashboard figures
+        // and the stock number shown next to each SKU.
+        invalidateAfter("outward")
         router.push("/inventory/mis")
         router.refresh()
       } else {

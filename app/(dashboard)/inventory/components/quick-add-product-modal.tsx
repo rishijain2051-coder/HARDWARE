@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { saveProduct } from "@/app/(dashboard)/masters/products/actions"
-import { useLookup } from "@/components/lookup-cache"
+import { useDatasetRows } from "@/components/dataset-cache"
 
 export function QuickAddProductModal({
   open,
@@ -32,8 +32,8 @@ export function QuickAddProductModal({
   // Read straight from the cache rather than taking these as props: the modal is
   // reached from a combobox nested a few levels down, and threading two lists
   // through every form in between bought nothing.
-  const { rows: categories } = useLookup("categories")
-  const { rows: units } = useLookup("units")
+  const { rows: categories } = useDatasetRows("categories")
+  const { rows: units } = useDatasetRows("units")
 
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")

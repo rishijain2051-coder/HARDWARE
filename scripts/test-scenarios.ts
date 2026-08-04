@@ -595,6 +595,7 @@ async function phaseD_serverActions() {
   console.log("D. Server actions")
   const G = "D"
 
+  const DS = "lib/datasets/actions.ts"
   const S = "app/(dashboard)/masters/suppliers/actions.ts"
   const GRN = "app/(dashboard)/inventory/grn/actions.ts"
   const U = "app/(dashboard)/users/actions.ts"
@@ -607,13 +608,70 @@ async function phaseD_serverActions() {
   }
   check(G, "action manifests loaded", true)
 
-  // --- reads must not leak to unauthorised callers ---
+  // --- the browser data cache must not hand data to unauthorised callers ---
+  //
+  // Every screen reads through fetchDatasets now, which makes it the widest read
+  // surface in the app: one endpoint, one argument, eighteen datasets behind it.
+  // Each is checked against the same permission set the UI uses.
+  const DATASET_CHECKS: { kind: string; module: ModuleKey; needle: string }[] = [
+    { kind: "supplierRows", module: "SUPPLIER_MASTER", needle: `${PREFIX} Supplier` },
+    { kind: "suppliers", module: "SUPPLIER_MASTER", needle: `${PREFIX} Supplier` },
+  ]
+
   for (const p of PERSONAS) {
     if (p.key === "inactive") continue
-    const res = await callAction(S, "getSuppliers", "/masters/suppliers", [], p.cookie)
-    const canView = p.perms!.canView("SUPPLIER_MASTER")
-    const leaked = res.body.includes(`${PREFIX} Supplier`)
-    check(G, `${p.key} getSuppliers ${canView ? "returns" : "withholds"} data`, canView ? leaked : !leaked)
+
+    for (const { kind, module, needle } of DATASET_CHECKS) {
+      const res = await callAction(DS, "fetchDatasets", "/masters/suppliers", [[kind]], p.cookie)
+      const leaked = res.body.includes(needle)
+
+      // "suppliers" is the slim list a form needs, so booking inward stock is
+      // enough to see supplier *names*; "supplierRows" carries contact details
+      // and needs the master's own VIEW. Mirror that rule here rather than
+      // assuming they behave alike.
+      const entitled =
+        kind === "supplierRows"
+          ? p.perms!.canView(module)
+          : p.perms!.canView(module) ||
+            p.perms!.can("INWARD_RECORD", "VIEW") ||
+            p.perms!.can("INWARD_RECORD", "CREATE")
+
+      check(
+        G,
+        `${p.key} fetchDatasets(${kind}) ${entitled ? "returns" : "withholds"} data`,
+        entitled ? leaked : !leaked
+      )
+    }
+
+    // Datasets behind a module the persona cannot view must come back empty
+    // regardless of which screen the action is posted to.
+    for (const [kind, module] of [
+      ["grnList", "INWARD_RECORD"],
+      ["misList", "OUTWARD_RECORD"],
+      ["storeLog", "STORE_LOG"],
+      ["productRows", "PRODUCT_MASTER"],
+      ["dashboard", "DASHBOARD"],
+    ] as [string, ModuleKey][]) {
+      const res = await callAction(DS, "fetchDatasets", "/dashboard", [[kind]], p.cookie)
+      const returned = res.body.includes(`"${kind}"`)
+      check(
+        G,
+        `${p.key} fetchDatasets(${kind}) ${p.perms!.canView(module) ? "returns" : "withholds"} a result`,
+        returned === p.perms!.canView(module)
+      )
+    }
+  }
+
+  // --- unknown kinds are dropped rather than reflected back ---
+  {
+    const res = await callAction(
+      DS,
+      "fetchDatasets",
+      "/dashboard",
+      [["__proto__", "users", "roles", 7, null, { kind: "productRows" }]],
+      PERSONAS[0].cookie
+    )
+    check(G, "fetchDatasets ignores unknown kinds", !res.body.includes('"kind"'))
   }
 
   // --- getUsers must never leak account emails to non-admins ---

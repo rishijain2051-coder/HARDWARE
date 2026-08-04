@@ -3,43 +3,6 @@
 import { prisma } from "@/lib/prisma"
 import { authorize } from "@/lib/dal"
 
-export async function getStoreLogs({
-  productId,
-  transactionType,
-  dateFrom,
-  dateTo,
-}: {
-  productId?: string
-  transactionType?: string
-  dateFrom?: string
-  dateTo?: string
-} = {}) {
-  const gate = await authorize("STORE_LOG", "VIEW")
-  if (!gate.success) return []
-
-  const where: any = {}
-
-  if (productId) where.productId = productId
-  if (transactionType) where.transactionType = transactionType
-  if (dateFrom || dateTo) {
-    where.date = {}
-    if (dateFrom) where.date.gte = new Date(dateFrom)
-    if (dateTo) where.date.lte = new Date(dateTo + "T23:59:59")
-  }
-
-  return await prisma.storeLog.findMany({
-    where,
-    include: {
-      product: { select: { sku: true, description: true } },
-      supplier: { select: { name: true } },
-      staff: { select: { name: true } },
-      createdBy: { select: { name: true } },
-    },
-    orderBy: { date: "desc" },
-    take: 500,
-  })
-}
-
 export async function hardDeleteStoreLog(id: string) {
   const gate = await authorize("STORE_LOG", "DELETE")
   if (!gate.success) return gate

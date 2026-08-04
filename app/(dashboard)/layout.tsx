@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 
 import { getAccess, getCurrentUser } from "@/lib/dal"
+import { permissionFingerprint } from "@/lib/permissions"
 import ClientLayout from "./client-layout"
 
 export default async function DashboardLayout({
@@ -23,13 +24,20 @@ export default async function DashboardLayout({
         isSuperAdmin: access.isSuperAdmin,
         isAuthenticated: access.isAuthenticated,
       }}
-      // Only what the shell actually needs — anything passed here is serialised
-      // into the RSC payload embedded in the page, so there's no reason to ship
-      // the email address when it isn't displayed. The id is not rendered; it
-      // scopes the client lookup cache so one user's cached lists are dropped
-      // when a different user signs in on the same terminal.
+      /**
+       * Scope for the browser data cache.
+       *
+       * The user id keeps one person's cached data from reaching the next on a
+       * shared shop terminal. The permission fingerprint handles the other
+       * direction: if a role is edited, the grants that justified caching that
+       * data no longer hold, so the scope changes and the cache is dropped
+       * rather than served until its TTL runs out.
+       */
+      cacheScope={`${user.id}.${permissionFingerprint(access.keys, access.isSuperAdmin)}`}
+      // Only what the shell actually renders — anything passed here is
+      // serialised into the RSC payload embedded in the page, so there's no
+      // reason to ship the email address when it isn't displayed.
       user={{
-        id: user.id,
         name: user.name,
         roleName: user.role.name,
       }}

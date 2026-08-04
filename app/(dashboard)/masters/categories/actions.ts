@@ -5,15 +5,6 @@ import { revalidatePath } from "next/cache"
 import { categorySchema, CategoryFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getCategories() {
-  const gate = await authorize("CATEGORY_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.category.findMany({
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveCategory(data: CategoryFormValues) {
   const result = categorySchema.safeParse(data)
   

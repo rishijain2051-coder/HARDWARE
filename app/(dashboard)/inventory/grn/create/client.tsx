@@ -17,8 +17,8 @@ import {
 import { saveGrn } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
 import { TXN_LABELS } from "@/lib/labels"
-import { invalidateLookups, useLookup } from "@/components/lookup-cache"
-import type { ProductRecord } from "@/lib/lookups/types"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
+import type { ProductRecord } from "@/lib/datasets/types"
 
 interface LineItem {
   productId: string
@@ -39,8 +39,8 @@ export function GrnCreateClient() {
   // Both lists come from localStorage and are requested in a single batched
   // call on a cold cache. The GRN is attributed server-side from the session,
   // so no user id needs to travel to the browser and back.
-  const { rows: suppliers, loading: loadingSuppliers } = useLookup("suppliers")
-  const { rows: bins } = useLookup("bins")
+  const { rows: suppliers, loading: loadingSuppliers } = useDatasetRows("suppliers")
+  const { rows: bins } = useDatasetRows("bins")
 
   const [supplierId, setSupplierId] = useState("")
   const [invoiceNumber, setInvoiceNumber] = useState("")
@@ -137,10 +137,10 @@ export function GrnCreateClient() {
       })
 
       if (result.success) {
-        // Booking stock changes currentStock on every product in the entry, and
-        // that figure is shown next to the SKU in the combobox, so the cached
-        // list has to go.
-        invalidateLookups("products")
+        // Booking stock moves the entry list, the ledger, the dashboard figures
+        // and the stock number shown next to each SKU. DATASET_GROUPS knows the
+        // fan-out so this call site doesn't have to.
+        invalidateAfter("inward")
         router.push("/inventory/grn")
         router.refresh()
       } else {

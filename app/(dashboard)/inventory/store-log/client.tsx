@@ -8,10 +8,12 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { hardDeleteStoreLog } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 import { transactionTypeLabel } from "@/lib/labels"
 
-export function StoreLogClient({ data }: { data: any[] }) {
+export function StoreLogClient() {
+  const { rows: data, loading, error } = useDatasetRows("storeLog")
+
   const perms = usePermissions()
   const canDelete = perms.can("STORE_LOG", "DELETE")
 
@@ -24,8 +26,7 @@ export function StoreLogClient({ data }: { data: any[] }) {
       if (res?.error) {
         alert(res.error)
       } else {
-        // The running balance was rewritten, which moves currentStock.
-        invalidateLookups("products")
+        invalidateAfter("storeLog")
       }
     }
   }
@@ -124,6 +125,8 @@ export function StoreLogClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={error}
         searchKey="referenceNumber"
         searchPlaceholder="Search by reference number..."
       />

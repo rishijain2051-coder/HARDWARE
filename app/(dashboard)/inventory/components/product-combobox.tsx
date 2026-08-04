@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/popover"
 import { QuickAddProductModal } from "./quick-add-product-modal"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups, useLookup } from "@/components/lookup-cache"
-import type { ProductRecord } from "@/lib/lookups/types"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
+import type { ProductRecord } from "@/lib/datasets/types"
 
 // Fuzzy token filter for Command
 function fuzzyFilter(value: string, search: string, keywords?: string[]) {
@@ -53,7 +53,7 @@ export function ProductCombobox({
   // The product list comes from the browser cache rather than the page payload.
   // A सामान आया form has one of these per line item, and they all read the same
   // cache entry, so ten line items still cost zero extra requests.
-  const { rows: products, loading } = useLookup("products")
+  const { rows: products, loading } = useDatasetRows("products")
 
   // Quick-add writes to the product master, which is a separate grant from
   // being allowed to book a GRN or MIS. Hide it rather than let the user fill
@@ -167,11 +167,11 @@ export function ProductCombobox({
         open={quickAddOpen && canQuickAdd}
         onOpenChange={setQuickAddOpen}
         onSuccess={() => {
-          // Drop the cached list so the new product appears. This replaces a
-          // router.refresh() and a blind 500ms wait for it to land: the refetch
-          // is scoped to the product list, and every combobox on the form picks
-          // up the result at the same time.
-          invalidateLookups("products")
+          // Drop the cached product data so the new product appears. This
+          // replaces a router.refresh() and a blind 500ms wait for it to land:
+          // the refetch is scoped to the product datasets, and every combobox on
+          // the form picks up the result at the same time.
+          invalidateAfter("products")
           setQuickAddOpen(false)
         }}
       />

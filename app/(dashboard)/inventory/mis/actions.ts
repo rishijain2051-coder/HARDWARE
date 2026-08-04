@@ -23,22 +23,6 @@ async function generateMisNumber(): Promise<string> {
   return `${prefix}-${String(seq).padStart(4, "0")}`
 }
 
-export async function getMisList() {
-  const gate = await authorize("OUTWARD_RECORD", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.misHeader.findMany({
-    where: { isDeleted: false },
-    include: {
-      staff: { select: { name: true } },
-      createdBy: { select: { name: true } },
-      _count: { select: { items: true } },
-    },
-    orderBy: { date: "desc" },
-    take: 500,
-  })
-}
-
 export async function getMisById(id: string) {
   const gate = await authorize("OUTWARD_RECORD", "VIEW")
   if (!gate.success) return null

@@ -8,7 +8,7 @@ export default async function MisCreatePage() {
 
   // Staff, bins and the product master are read from the browser cache by the
   // form rather than queried and serialised here on every visit, so this page
-  // is just the permission check. See components/lookup-cache.tsx.
+  // is just the permission check. See components/dataset-cache.tsx.
   return (
     <div>
       <MisCreateClient />

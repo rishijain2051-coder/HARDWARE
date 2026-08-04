@@ -5,15 +5,6 @@ import { revalidatePath } from "next/cache"
 import { unitSchema, UnitFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getUnits() {
-  const gate = await authorize("UNIT_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.unit.findMany({
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveUnit(data: UnitFormValues) {
   const result = unitSchema.safeParse(data)
   

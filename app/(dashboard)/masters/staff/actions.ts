@@ -5,18 +5,6 @@ import { revalidatePath } from "next/cache"
 import { staffSchema, StaffFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getStaff(search?: string) {
-  const gate = await authorize("STAFF_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.staff.findMany({
-    where: search
-      ? { name: { contains: search, mode: "insensitive" } }
-      : undefined,
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveStaff(data: StaffFormValues) {
   const result = staffSchema.safeParse(data)
   

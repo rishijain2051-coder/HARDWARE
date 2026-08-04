@@ -27,52 +27,6 @@ async function generateSku(categoryId: string): Promise<string> {
   return `${prefix}-${String(nextNum).padStart(4, "0")}`
 }
 
-export async function getProducts({
-  search,
-  categoryId,
-  isActive,
-}: {
-  search?: string
-  categoryId?: string
-  isActive?: boolean
-} = {}) {
-  const gate = await authorize("PRODUCT_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  const where: any = {}
-
-  if (categoryId) where.categoryId = categoryId
-  if (typeof isActive === "boolean") where.isActive = isActive
-
-  if (search) {
-    const keywords = search.split(/\s+/).filter(Boolean)
-    if (keywords.length > 0) {
-      where.AND = keywords.map((kw) => ({
-        OR: [
-          { sku: { contains: kw, mode: "insensitive" } },
-          { description: { contains: kw, mode: "insensitive" } },
-          { aliases: { some: { alias: { contains: kw, mode: "insensitive" } } } },
-          { attributeValues: { some: { value: { contains: kw, mode: "insensitive" } } } },
-        ],
-      }))
-    }
-  }
-
-  return await prisma.hardwareProduct.findMany({
-    where,
-    include: {
-      category: { select: { id: true, name: true } },
-      unit: { select: { id: true, name: true, abbreviation: true } },
-      defaultBin: { select: { id: true, name: true } },
-      aliases: { select: { id: true, alias: true } },
-      attributeValues: {
-        include: { attribute: { select: { id: true, name: true, type: true } } },
-      },
-    },
-    orderBy: { sku: "asc" },
-  })
-}
-
 export async function getProductById(id: string) {
   const gate = await authorize("PRODUCT_MASTER", "VIEW")
   if (!gate.success) return null
@@ -291,36 +245,6 @@ export async function deleteProduct(id: string, hardDelete: boolean = false) {
 }
 
 // The form's reference lists (categories, units, bins, attributes) are no longer
-// read here. They are served from the browser cache via `fetchLookups` in
-// lib/lookups/actions.ts, which is also where their permission gates live.
+// read here. They are served from the browser cache via `fetchDatasets` in
+// lib/datasets/actions.ts, which is also where their permission gates live.
 
-export async function searchProducts(query: string) {
-  const gate = await authorize("PRODUCT_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  if (!query || query.length < 2) return []
-
-  const tokens = query.toLowerCase().split(/[\s,]+/).filter(Boolean)
-  if (tokens.length === 0) return []
-
-  const conditions: any[] = tokens.map((token) => ({
-    OR: [
-      { sku: { contains: token, mode: "insensitive" } },
-      { description: { contains: token, mode: "insensitive" } },
-      { aliases: { some: { alias: { contains: token, mode: "insensitive" } } } },
-    ],
-  }))
-
-  return await prisma.hardwareProduct.findMany({
-    where: {
-      isActive: true,
-      AND: conditions,
-    },
-    include: {
-      unit: { select: { name: true, abbreviation: true } },
-      category: { select: { name: true } },
-    },
-    take: 20,
-    orderBy: { description: "asc" },
-  })
-}

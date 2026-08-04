@@ -24,22 +24,6 @@ async function generateGrnNumber(): Promise<string> {
   return `${prefix}-${String(seq).padStart(4, "0")}`
 }
 
-export async function getGrnList() {
-  const gate = await authorize("INWARD_RECORD", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.grnHeader.findMany({
-    where: { isDeleted: false },
-    include: {
-      supplier: { select: { name: true } },
-      createdBy: { select: { name: true } },
-      _count: { select: { items: true } },
-    },
-    orderBy: { date: "desc" },
-    take: 500,
-  })
-}
-
 export async function getGrnById(id: string) {
   const gate = await authorize("INWARD_RECORD", "VIEW")
   if (!gate.success) return null

@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { usePermissions } from "@/components/permission-provider"
+import { useDatasetRows } from "@/components/dataset-cache"
 import { TXN_LABELS } from "@/lib/labels"
 
-export function GrnListClient({ data }: { data: any[] }) {
+export function GrnListClient() {
+  const { rows: data, loading, error } = useDatasetRows("grnList")
+
   const perms = usePermissions()
   const canCreate = perms.can("INWARD_RECORD", "CREATE")
 
@@ -84,6 +87,8 @@ export function GrnListClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={error}
         searchKey="grnNumber"
         searchPlaceholder={`${TXN_LABELS.inward} नंबर से खोजें...`}
         toolbarActions={

@@ -396,6 +396,31 @@ export function createPermissionSet(init: PermissionSetInit = {}): PermissionSet
 export const NO_PERMISSIONS: PermissionSet = createPermissionSet()
 
 /**
+ * A short, stable fingerprint of what a user is allowed to do.
+ *
+ * Used to scope the browser data cache (see lib/client-cache.ts). Server data
+ * cached in a browser is only safe while the grants that justified reading it
+ * still hold; folding them into the scope means an edited role drops the cache
+ * instead of leaving yesterday's supplier list readable until a TTL expires.
+ *
+ * FNV-1a over the sorted keys: not a security boundary — the server re-checks
+ * every request regardless — just a cheap way to notice that the set changed.
+ */
+export function permissionFingerprint(
+  keys: readonly string[],
+  isSuperAdmin: boolean
+): string {
+  const source = `${isSuperAdmin ? "sa" : "u"}|${[...keys].sort().join(",")}`
+  let hash = 0x811c9dc5
+  for (let i = 0; i < source.length; i++) {
+    hash ^= source.charCodeAt(i)
+    // 16777619, via shifts, to stay in 32-bit integer arithmetic.
+    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0
+  }
+  return hash.toString(36)
+}
+
+/**
  * Where to send a user who has no access to the page they asked for.
  * Falls back to the first module they *can* see, so a GRN-only clerk lands on
  * the GRN list instead of a dashboard they're not allowed to read.

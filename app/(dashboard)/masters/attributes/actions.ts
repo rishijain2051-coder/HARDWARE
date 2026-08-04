@@ -5,15 +5,6 @@ import { revalidatePath } from "next/cache"
 import { attributeSchema, AttributeFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getAttributes() {
-  const gate = await authorize("ATTRIBUTE_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.attribute.findMany({
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveAttribute(data: AttributeFormValues) {
   const result = attributeSchema.safeParse(data)
   

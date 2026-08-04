@@ -5,18 +5,6 @@ import { revalidatePath } from "next/cache"
 import { supplierSchema, SupplierFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getSuppliers(search?: string) {
-  const gate = await authorize("SUPPLIER_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.supplier.findMany({
-    where: search
-      ? { name: { contains: search, mode: "insensitive" } }
-      : undefined,
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveSupplier(data: SupplierFormValues) {
   const result = supplierSchema.safeParse(data)
   

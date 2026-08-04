@@ -29,9 +29,11 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { unitSchema, UnitFormValues } from "./schema"
 import { saveUnit, deleteUnit } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 
-export function UnitsClient({ data }: { data: any[] }) {
+export function UnitsClient() {
+  const { rows: data, loading, error: loadError } = useDatasetRows("unitRows")
+
   const perms = usePermissions()
   const canCreate = perms.can("UNIT_MASTER", "CREATE")
   const canEdit = perms.can("UNIT_MASTER", "EDIT")
@@ -76,7 +78,7 @@ export function UnitsClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveUnit(values)
     if (result.success) {
-      invalidateLookups("units")
+      invalidateAfter("units")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -87,7 +89,7 @@ export function UnitsClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this unit?")) {
       await deleteUnit(id)
-      invalidateLookups("units")
+      invalidateAfter("units")
     }
   }
 
@@ -152,6 +154,8 @@ export function UnitsClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={loadError}
         searchKey="name"
         searchPlaceholder="Search units..."
         toolbarActions={

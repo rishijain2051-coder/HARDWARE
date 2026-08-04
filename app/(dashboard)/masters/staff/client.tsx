@@ -29,10 +29,12 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { staffSchema, StaffFormValues } from "./schema"
 import { saveStaff, deleteStaff } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 import { OptionalFields } from "@/components/ui/optional-fields"
 
-export function StaffClient({ data }: { data: any[] }) {
+export function StaffClient() {
+  const { rows: data, loading, error: loadError } = useDatasetRows("staffRows")
+
   const perms = usePermissions()
   const canCreate = perms.can("STAFF_MASTER", "CREATE")
   const canEdit = perms.can("STAFF_MASTER", "EDIT")
@@ -94,7 +96,7 @@ export function StaffClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveStaff(values)
     if (result.success) {
-      invalidateLookups("staff")
+      invalidateAfter("staff")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -105,7 +107,7 @@ export function StaffClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this staff member?")) {
       const result = await deleteStaff(id)
-      invalidateLookups("staff")
+      invalidateAfter("staff")
       if (!result.success && result.error) {
         alert(result.error)
       }
@@ -181,6 +183,8 @@ export function StaffClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={loadError}
         searchKey="name"
         searchPlaceholder="Search staff..."
         toolbarActions={

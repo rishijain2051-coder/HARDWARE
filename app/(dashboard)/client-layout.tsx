@@ -33,7 +33,7 @@ import {
   usePermissions,
   type SerializedAccess,
 } from "@/components/permission-provider";
-import { LookupCacheProvider } from "@/components/lookup-cache";
+import { DatasetCacheProvider } from "@/components/dataset-cache";
 import { purgeCache } from "@/lib/client-cache";
 import {
   filterNavTree,
@@ -159,8 +159,6 @@ function NavLink({
 }
 
 interface LayoutUser {
-  /** Not rendered — it scopes the client lookup cache to this user. */
-  id: string;
   name: string;
   roleName: string;
 }
@@ -177,8 +175,8 @@ function Sidebar({ user }: { user: LayoutUser }) {
 
   async function handleLogout() {
     await signOut();
-    // The cached lists are permission-gated data. Drop them on the way out so
-    // the next person to use this terminal starts from nothing.
+    // The cached data is permission-gated. Drop it on the way out so the next
+    // person to use this terminal starts from nothing.
     purgeCache();
     router.push("/login");
     router.refresh();
@@ -351,10 +349,13 @@ function TopBar() {
 export default function DashboardLayout({
   children,
   access,
+  cacheScope,
   user,
 }: {
   children: React.ReactNode;
   access: SerializedAccess;
+  /** Identifies whose data the browser cache holds. See app/(dashboard)/layout.tsx. */
+  cacheScope: string;
   user: LayoutUser;
 }) {
   // Starts collapsed (the right default on a phone) but remembers what the user
@@ -363,7 +364,7 @@ export default function DashboardLayout({
 
   return (
     <PermissionProvider access={access}>
-      <LookupCacheProvider scope={user.id}>
+      <DatasetCacheProvider scope={cacheScope}>
         <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
           <div className="flex h-screen overflow-hidden bg-background">
             <Sidebar user={user} />
@@ -375,7 +376,7 @@ export default function DashboardLayout({
             </div>
           </div>
         </SidebarContext.Provider>
-      </LookupCacheProvider>
+      </DatasetCacheProvider>
     </PermissionProvider>
   );
 }

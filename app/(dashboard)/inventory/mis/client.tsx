@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { usePermissions } from "@/components/permission-provider"
+import { useDatasetRows } from "@/components/dataset-cache"
 import { TXN_LABELS } from "@/lib/labels"
 
-export function MisListClient({ data }: { data: any[] }) {
+export function MisListClient() {
+  const { rows: data, loading, error } = useDatasetRows("misList")
+
   const perms = usePermissions()
   const canCreate = perms.can("OUTWARD_RECORD", "CREATE")
 
@@ -86,6 +89,8 @@ export function MisListClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={error}
         searchKey="misNumber"
         searchPlaceholder={`${TXN_LABELS.outward} नंबर से खोजें...`}
         toolbarActions={

@@ -29,7 +29,7 @@ import { OptionalFields } from "@/components/ui/optional-fields"
 
 import { productSchema, ProductFormValues } from "../schema"
 import { saveProduct } from "../actions"
-import { invalidateLookups, useLookup } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 
 interface ProductFormProps {
   initialData?: any
@@ -40,10 +40,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
   // The four reference lists come from the browser cache rather than the page
   // payload, and are fetched together in one call when it is cold.
-  const { rows: categories, loading: loadingCategories } = useLookup("categories")
-  const { rows: units, loading: loadingUnits } = useLookup("units")
-  const { rows: bins } = useLookup("bins")
-  const { rows: attributes } = useLookup("attributes")
+  const { rows: categories, loading: loadingCategories } = useDatasetRows("categories")
+  const { rows: units, loading: loadingUnits } = useDatasetRows("units")
+  const { rows: bins } = useDatasetRows("bins")
+  const { rows: attributes } = useDatasetRows("attributes")
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [aliasInput, setAliasInput] = useState("")
@@ -149,7 +149,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     try {
       const result = await saveProduct(values)
       if (result.success) {
-        invalidateLookups("products")
+        invalidateAfter("products")
         router.push("/masters/products")
         router.refresh()
       } else {

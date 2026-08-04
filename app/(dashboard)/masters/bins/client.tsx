@@ -29,10 +29,12 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { binSchema, BinFormValues } from "./schema"
 import { saveBin, deleteBin } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 import { OptionalFields } from "@/components/ui/optional-fields"
 
-export function BinsClient({ data }: { data: any[] }) {
+export function BinsClient() {
+  const { rows: data, loading, error: loadError } = useDatasetRows("binRows")
+
   const perms = usePermissions()
   const canCreate = perms.can("BIN_MASTER", "CREATE")
   const canEdit = perms.can("BIN_MASTER", "EDIT")
@@ -83,7 +85,7 @@ export function BinsClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveBin(values)
     if (result.success) {
-      invalidateLookups("bins")
+      invalidateAfter("bins")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -94,7 +96,7 @@ export function BinsClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this bin?")) {
       await deleteBin(id)
-      invalidateLookups("bins")
+      invalidateAfter("bins")
     }
   }
 
@@ -159,6 +161,8 @@ export function BinsClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={loadError}
         searchKey="name"
         searchPlaceholder="Search bins..."
         toolbarActions={

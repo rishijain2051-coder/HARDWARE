@@ -18,15 +18,11 @@ import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { deleteProduct } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 
-export function ProductsClient({
-  data,
-  categories,
-}: {
-  data: any[]
-  categories: any[]
-}) {
+export function ProductsClient() {
+  const { rows: data, loading, error } = useDatasetRows("productRows")
+
   const perms = usePermissions()
   const canCreate = perms.can("PRODUCT_MASTER", "CREATE")
   const canEdit = perms.can("PRODUCT_MASTER", "EDIT")
@@ -44,8 +40,7 @@ export function ProductsClient({
     if (res?.error) {
       alert(res.error)
     } else {
-      // The product also lives in the cached list the entry forms read.
-      invalidateLookups("products")
+      invalidateAfter("products")
     }
   }
 
@@ -146,6 +141,8 @@ export function ProductsClient({
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={error}
         searchKey="description"
         searchPlaceholder="Search products by description..."
       />

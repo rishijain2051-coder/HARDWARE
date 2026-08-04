@@ -27,6 +27,7 @@ import {
 
 import { DataTablePagination } from "./data-table-pagination"
 import { Input } from "@/components/ui/input"
+import { DataLoadError, TableSkeleton } from "./table-skeleton"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -34,6 +35,15 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string
   searchPlaceholder?: string
   toolbarActions?: React.ReactNode
+  /**
+   * Set while the rows are still on their way. Screens read their data from the
+   * browser cache, which cannot be consulted until after hydration, so on a full
+   * page load there is one frame with nothing to show. An empty table would read
+   * as "there are no suppliers"; a skeleton reads as what is actually happening.
+   */
+  loading?: boolean
+  /** Set when the rows could not be fetched at all. */
+  error?: string | null
 }
 
 export function DataTable<TData, TValue>({
@@ -42,6 +52,8 @@ export function DataTable<TData, TValue>({
   searchKey,
   searchPlaceholder = "Search...",
   toolbarActions,
+  loading = false,
+  error = null,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -93,6 +105,12 @@ export function DataTable<TData, TValue>({
           {toolbarActions}
         </div>
       </div>
+      {error ? (
+        <DataLoadError message={error} />
+      ) : loading ? (
+        <TableSkeleton columns={Math.min(columns.length, 6)} />
+      ) : (
+      <>
       <div className="rounded-xl border border-slate-200/60 glass overflow-x-auto shadow-sm">
         <Table>
           <TableHeader>
@@ -144,6 +162,8 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       <DataTablePagination table={table} />
+      </>
+      )}
     </div>
   )
 }

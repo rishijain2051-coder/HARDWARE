@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
      * `router.refresh()`, which invalidates this cache regardless of the window.
      *
      * The counterpart for reference data is the localStorage cache in
-     * components/lookup-cache.tsx, which survives reloads; this one only lives
+     * components/dataset-cache.tsx, which survives reloads; this one only lives
      * as long as the tab.
      */
     staleTimes: {

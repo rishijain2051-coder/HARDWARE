@@ -29,9 +29,11 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { categorySchema, CategoryFormValues } from "./schema"
 import { saveCategory, deleteCategory } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
-import { invalidateLookups } from "@/components/lookup-cache"
+import { invalidateAfter, useDatasetRows } from "@/components/dataset-cache"
 
-export function CategoriesClient({ data }: { data: any[] }) {
+export function CategoriesClient() {
+  const { rows: data, loading, error: loadError } = useDatasetRows("categoryRows")
+
   const perms = usePermissions()
   const canCreate = perms.can("CATEGORY_MASTER", "CREATE")
   const canEdit = perms.can("CATEGORY_MASTER", "EDIT")
@@ -73,7 +75,7 @@ export function CategoriesClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveCategory(values)
     if (result.success) {
-      invalidateLookups("categories")
+      invalidateAfter("categories")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -84,7 +86,7 @@ export function CategoriesClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to permanently delete this category? This action cannot be undone.")) {
       const result = await deleteCategory(id)
-      invalidateLookups("categories")
+      invalidateAfter("categories")
       if (!result.success && result.error) {
         alert(result.error)
       }
@@ -148,6 +150,8 @@ export function CategoriesClient({ data }: { data: any[] }) {
       <DataTable
         columns={columns}
         data={data}
+        loading={loading}
+        error={loadError}
         searchKey="name"
         searchPlaceholder="Search categories..."
         toolbarActions={

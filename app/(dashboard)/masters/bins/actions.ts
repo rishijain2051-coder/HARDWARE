@@ -5,15 +5,6 @@ import { revalidatePath } from "next/cache"
 import { binSchema, BinFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 
-export async function getBins() {
-  const gate = await authorize("BIN_MASTER", "VIEW")
-  if (!gate.success) return []
-
-  return await prisma.bin.findMany({
-    orderBy: { name: "asc" },
-  })
-}
-
 export async function saveBin(data: BinFormValues) {
   const result = binSchema.safeParse(data)
   
