@@ -19,15 +19,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { QuickAddProductModal } from "./quick-add-product-modal"
-import { useRouter } from "next/navigation"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups, useLookup } from "@/components/lookup-cache"
+import type { ProductRecord } from "@/lib/lookups/types"
 
 // Fuzzy token filter for Command
 function fuzzyFilter(value: string, search: string, keywords?: string[]) {
   const searchTokens = search.toLowerCase().split(/[\s,]+/).filter(Boolean)
   const targetText = value.toLowerCase()
   const keywordText = (keywords || []).join(" ").toLowerCase()
-  
+
   // All tokens must be present somewhere in the value or keywords
   for (const token of searchTokens) {
     if (!targetText.includes(token) && !keywordText.includes(token)) {
@@ -38,23 +39,21 @@ function fuzzyFilter(value: string, search: string, keywords?: string[]) {
 }
 
 export function ProductCombobox({
-  products,
-  categories,
-  units,
   value,
   onChange,
   onProductData,
 }: {
-  products: any[]
-  categories: any[]
-  units: any[]
   value: string
   onChange: (value: string) => void
-  onProductData?: (product: any) => void
+  onProductData?: (product: ProductRecord) => void
 }) {
-  const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [quickAddOpen, setQuickAddOpen] = React.useState(false)
+
+  // The product list comes from the browser cache rather than the page payload.
+  // A सामान आया form has one of these per line item, and they all read the same
+  // cache entry, so ten line items still cost zero extra requests.
+  const { rows: products, loading } = useLookup("products")
 
   // Quick-add writes to the product master, which is a separate grant from
   // being allowed to book a GRN or MIS. Hide it rather than let the user fill
@@ -72,9 +71,12 @@ export function ProductCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={loading}
             className="w-full justify-between h-auto min-h-10 py-2"
           >
-            {selectedProduct ? (
+            {loading ? (
+              <span className="text-muted-foreground">Loading products...</span>
+            ) : selectedProduct ? (
               <div className="flex items-center gap-3 text-left">
                 {selectedProduct.imageUrl ? (
                   <img src={selectedProduct.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />
@@ -115,9 +117,9 @@ export function ProductCombobox({
               </CommandEmpty>
               <CommandGroup>
                 {products.map((product) => {
-                  const keywords = product.aliases?.map((a: any) => a.alias) || []
+                  const keywords = product.aliases.map((a) => a.alias)
                   keywords.push(product.sku)
-                  
+
                   return (
                     <CommandItem
                       key={product.id}
@@ -164,15 +166,13 @@ export function ProductCombobox({
       <QuickAddProductModal
         open={quickAddOpen && canQuickAdd}
         onOpenChange={setQuickAddOpen}
-        categories={categories}
-        units={units}
         onSuccess={() => {
-          // Wait for Next.js to re-fetch the product list, then close the modal
-          router.refresh()
-          // Short delay to allow refresh to take effect
-          setTimeout(() => {
-            setQuickAddOpen(false)
-          }, 500)
+          // Drop the cached list so the new product appears. This replaces a
+          // router.refresh() and a blind 500ms wait for it to land: the refetch
+          // is scoped to the product list, and every combobox on the form picks
+          // up the result at the same time.
+          invalidateLookups("products")
+          setQuickAddOpen(false)
         }}
       />
     </>

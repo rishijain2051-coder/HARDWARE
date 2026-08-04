@@ -29,6 +29,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { categorySchema, CategoryFormValues } from "./schema"
 import { saveCategory, deleteCategory } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 
 export function CategoriesClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -72,6 +73,7 @@ export function CategoriesClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveCategory(values)
     if (result.success) {
+      invalidateLookups("categories")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -82,6 +84,7 @@ export function CategoriesClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to permanently delete this category? This action cannot be undone.")) {
       const result = await deleteCategory(id)
+      invalidateLookups("categories")
       if (!result.success && result.error) {
         alert(result.error)
       }

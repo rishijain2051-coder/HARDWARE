@@ -18,6 +18,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { deleteProduct } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 
 export function ProductsClient({
   data,
@@ -42,6 +43,9 @@ export function ProductsClient({
     const res = await deleteProduct(id, hardDelete)
     if (res?.error) {
       alert(res.error)
+    } else {
+      // The product also lives in the cached list the entry forms read.
+      invalidateLookups("products")
     }
   }
 

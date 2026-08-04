@@ -29,6 +29,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { unitSchema, UnitFormValues } from "./schema"
 import { saveUnit, deleteUnit } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 
 export function UnitsClient({ data }: { data: any[] }) {
   const perms = usePermissions()
@@ -75,6 +76,7 @@ export function UnitsClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveUnit(values)
     if (result.success) {
+      invalidateLookups("units")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -85,6 +87,7 @@ export function UnitsClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this unit?")) {
       await deleteUnit(id)
+      invalidateLookups("units")
     }
   }
 

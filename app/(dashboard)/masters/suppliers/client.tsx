@@ -30,6 +30,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { supplierSchema, SupplierFormValues } from "./schema"
 import { saveSupplier, deleteSupplier } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function SuppliersClient({ data }: { data: any[] }) {
@@ -106,6 +107,7 @@ export function SuppliersClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveSupplier(values)
     if (result.success) {
+      invalidateLookups("suppliers")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -116,6 +118,7 @@ export function SuppliersClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this supplier?")) {
       const result = await deleteSupplier(id)
+      invalidateLookups("suppliers")
       if (!result.success && result.error) {
         alert(result.error)
       }

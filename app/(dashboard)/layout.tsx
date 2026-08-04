@@ -23,10 +23,13 @@ export default async function DashboardLayout({
         isSuperAdmin: access.isSuperAdmin,
         isAuthenticated: access.isAuthenticated,
       }}
-      // Only what the sidebar actually renders — anything passed here is
-      // serialised into the RSC payload embedded in the page, so there's no
-      // reason to ship the email address when it isn't displayed.
+      // Only what the shell actually needs — anything passed here is serialised
+      // into the RSC payload embedded in the page, so there's no reason to ship
+      // the email address when it isn't displayed. The id is not rendered; it
+      // scopes the client lookup cache so one user's cached lists are dropped
+      // when a different user signs in on the same terminal.
       user={{
+        id: user.id,
         name: user.name,
         roleName: user.role.name,
       }}

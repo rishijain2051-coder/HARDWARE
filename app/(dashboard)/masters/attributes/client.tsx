@@ -36,6 +36,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { attributeSchema, AttributeFormValues } from "./schema"
 import { saveAttribute, deleteAttribute } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function AttributesClient({ data }: { data: any[] }) {
@@ -114,6 +115,7 @@ export function AttributesClient({ data }: { data: any[] }) {
 
     const result = await saveAttribute(values)
     if (result.success) {
+      invalidateLookups("attributes")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -124,6 +126,7 @@ export function AttributesClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to delete this attribute?")) {
       const result = await deleteAttribute(id)
+      invalidateLookups("attributes")
       if (!result.success && result.error) {
         alert(result.error)
       }

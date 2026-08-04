@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { hardDeleteMis } from "../actions"
 import { useRouter } from "next/navigation"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 import { TXN_LABELS } from "@/lib/labels"
 
 export function DeleteMisButton({ id }: { id: string }) {
@@ -28,6 +29,8 @@ export function DeleteMisButton({ id }: { id: string }) {
       if (res.error) {
         alert(res.error)
       } else {
+        // Reversing the entry moved stock back; the cached figures are stale.
+        invalidateLookups("products")
         router.push("/inventory/mis")
       }
     }

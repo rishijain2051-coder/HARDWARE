@@ -29,19 +29,21 @@ import { OptionalFields } from "@/components/ui/optional-fields"
 
 import { productSchema, ProductFormValues } from "../schema"
 import { saveProduct } from "../actions"
+import { invalidateLookups, useLookup } from "@/components/lookup-cache"
 
 interface ProductFormProps {
   initialData?: any
-  lookups: {
-    categories: any[]
-    units: any[]
-    bins: any[]
-    attributes: any[]
-  }
 }
 
-export function ProductForm({ initialData, lookups }: ProductFormProps) {
+export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter()
+
+  // The four reference lists come from the browser cache rather than the page
+  // payload, and are fetched together in one call when it is cold.
+  const { rows: categories, loading: loadingCategories } = useLookup("categories")
+  const { rows: units, loading: loadingUnits } = useLookup("units")
+  const { rows: bins } = useLookup("bins")
+  const { rows: attributes } = useLookup("attributes")
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [aliasInput, setAliasInput] = useState("")
@@ -107,10 +109,10 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
     )
 
   // Filter attributes relevant to the selected category
-  const relevantAttributes = lookups.attributes.filter(
-    (attr: any) =>
+  const relevantAttributes = attributes.filter(
+    (attr) =>
       attr.categories.length === 0 ||
-      attr.categories.some((ca: any) => ca.categoryId === selectedCategoryId)
+      attr.categories.some((ca) => ca.categoryId === selectedCategoryId)
   )
 
   // When category changes, update attribute fields
@@ -118,7 +120,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
     if (!selectedCategoryId) return
 
     const currentAttrs = form.getValues("attributes")
-    const newAttrs = relevantAttributes.map((attr: any) => {
+    const newAttrs = relevantAttributes.map((attr) => {
       const existing = currentAttrs.find(
         (ca) => ca.attributeId === attr.id
       )
@@ -147,6 +149,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
     try {
       const result = await saveProduct(values)
       if (result.success) {
+        invalidateLookups("products")
         router.push("/masters/products")
         router.refresh()
       } else {
@@ -218,14 +221,19 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      disabled={loadingCategories}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
+                          <SelectValue
+                            placeholder={
+                              loadingCategories ? "Loading..." : "Select category"
+                            }
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {lookups.categories.map((cat: any) => (
+                        {categories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}
                           </SelectItem>
@@ -246,14 +254,17 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      disabled={loadingUnits}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select unit" />
+                          <SelectValue
+                            placeholder={loadingUnits ? "Loading..." : "Select unit"}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {lookups.units.map((unit: any) => (
+                        {units.map((unit) => (
                           <SelectItem key={unit.id} value={unit.id}>
                             {unit.name} ({unit.abbreviation})
                           </SelectItem>
@@ -358,7 +369,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {lookups.bins.map((bin: any) => (
+                        {bins.map((bin) => (
                           <SelectItem key={bin.id} value={bin.id}>
                             {bin.name}
                           </SelectItem>
@@ -437,7 +448,7 @@ export function ProductForm({ initialData, lookups }: ProductFormProps) {
             <div className="rounded-lg border bg-card p-6 space-y-4">
               <h3 className="text-lg font-semibold">Product Attributes</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {relevantAttributes.map((attr: any, idx: number) => {
+                {relevantAttributes.map((attr) => {
                   const attrIndex = form
                     .getValues("attributes")
                     .findIndex((a) => a.attributeId === attr.id)

@@ -33,12 +33,15 @@ import {
   usePermissions,
   type SerializedAccess,
 } from "@/components/permission-provider";
+import { LookupCacheProvider } from "@/components/lookup-cache";
+import { purgeCache } from "@/lib/client-cache";
 import {
   filterNavTree,
   NAV_TREE,
   type NavIcon,
   type NavNode,
 } from "@/lib/navigation";
+import { usePref } from "@/lib/ui-prefs";
 
 // Sidebar context for collapse state
 const SidebarContext = createContext<{
@@ -156,6 +159,8 @@ function NavLink({
 }
 
 interface LayoutUser {
+  /** Not rendered — it scopes the client lookup cache to this user. */
+  id: string;
   name: string;
   roleName: string;
 }
@@ -172,6 +177,9 @@ function Sidebar({ user }: { user: LayoutUser }) {
 
   async function handleLogout() {
     await signOut();
+    // The cached lists are permission-gated data. Drop them on the way out so
+    // the next person to use this terminal starts from nothing.
+    purgeCache();
     router.push("/login");
     router.refresh();
   }
@@ -349,21 +357,25 @@ export default function DashboardLayout({
   access: SerializedAccess;
   user: LayoutUser;
 }) {
-  const [collapsed, setCollapsed] = useState(true); // Start collapsed on mobile
+  // Starts collapsed (the right default on a phone) but remembers what the user
+  // chose, so a desktop user stops re-opening the sidebar on every visit.
+  const [collapsed, setCollapsed] = usePref("sidebar.collapsed", true);
 
   return (
     <PermissionProvider access={access}>
-      <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-        <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar user={user} />
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <TopBar />
-            <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-              {children}
-            </main>
+      <LookupCacheProvider scope={user.id}>
+        <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
+          <div className="flex h-screen overflow-hidden bg-background">
+            <Sidebar user={user} />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <TopBar />
+              <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-      </SidebarContext.Provider>
+        </SidebarContext.Provider>
+      </LookupCacheProvider>
     </PermissionProvider>
   );
 }

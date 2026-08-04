@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getProductById, getFormLookups } from "../../actions"
+import { getProductById } from "../../actions"
 import { ProductForm } from "../../components/product-form"
 import { guardPage } from "@/lib/dal"
 import { AccessDenied } from "@/components/access-denied"
@@ -13,16 +13,15 @@ export default async function EditProductPage({
   if (!gate.allowed) return <AccessDenied {...gate.denial!} />
 
   const { id } = await params
-  const [product, lookups] = await Promise.all([
-    getProductById(id),
-    getFormLookups(),
-  ])
+  // Only the product being edited is read here; the reference lists come from
+  // the browser cache inside the form.
+  const product = await getProductById(id)
 
   if (!product) notFound()
 
   return (
     <div>
-      <ProductForm initialData={product} lookups={lookups} />
+      <ProductForm initialData={product} />
     </div>
   )
 }

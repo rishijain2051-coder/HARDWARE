@@ -17,7 +17,9 @@
     "perms:reset-roles": "npx tsx scripts/reset-builtin-roles.ts",
     "perms:verify": "npx tsx scripts/verify-permissions.ts",
     "postinstall": "prisma generate",
-    "test:scenarios": "npx tsx scripts/test-scenarios.ts"
+    "test:scenarios": "npx tsx scripts/test-scenarios.ts",
+    "test:client-cache": "npx tsx scripts/verify-client-cache.ts",
+    "test:lookup-cache": "npx tsx scripts/verify-lookup-cache.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

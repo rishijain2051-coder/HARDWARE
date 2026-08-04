@@ -29,6 +29,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { staffSchema, StaffFormValues } from "./schema"
 import { saveStaff, deleteStaff } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 import { OptionalFields } from "@/components/ui/optional-fields"
 
 export function StaffClient({ data }: { data: any[] }) {
@@ -93,6 +94,7 @@ export function StaffClient({ data }: { data: any[] }) {
     setError(null)
     const result = await saveStaff(values)
     if (result.success) {
+      invalidateLookups("staff")
       setIsOpen(false)
     } else {
       setError(result.error || "Something went wrong")
@@ -103,6 +105,7 @@ export function StaffClient({ data }: { data: any[] }) {
     if (!canDelete) return
     if (confirm("Are you sure you want to deactivate this staff member?")) {
       const result = await deleteStaff(id)
+      invalidateLookups("staff")
       if (!result.success && result.error) {
         alert(result.error)
       }

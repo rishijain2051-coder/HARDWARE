@@ -17,6 +17,7 @@ import {
 import { saveMis } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
 import { TXN_LABELS } from "@/lib/labels"
+import { invalidateLookups, useLookup } from "@/components/lookup-cache"
 
 interface LineItem {
   productId: string
@@ -24,24 +25,17 @@ interface LineItem {
   binId: string
 }
 
-export function MisCreateClient({
-  staff,
-  products,
-  bins,
-  categories,
-  units,
-  userId,
-}: {
-  staff: any[]
-  products: any[]
-  bins: any[]
-  categories: any[]
-  units: any[]
-  userId: string
-}) {
+export function MisCreateClient() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Read from the browser cache instead of the page payload. All three are
+  // requested in one batched call when the cache is cold, and the product list
+  // is shared with the combobox on every line item.
+  const { rows: staff, loading: loadingStaff } = useLookup("staff")
+  const { rows: bins } = useLookup("bins")
+  const { rows: products } = useLookup("products")
 
   const [recipientType, setRecipientType] = useState("")
   const [staffId, setStaffId] = useState("")
@@ -51,7 +45,7 @@ export function MisCreateClient({
     { productId: "", quantity: 0, binId: "" },
   ])
 
-  const updateItem = (index: number, field: string, value: any) => {
+  const updateItem = (index: number, field: string, value: string | number) => {
     setItems((prev) =>
       prev.map((item, i) => (i !== index ? item : { ...item, [field]: value }))
     )
@@ -89,10 +83,12 @@ export function MisCreateClient({
           quantity: i.quantity,
           binId: i.binId || undefined,
         })),
-        createdById: userId,
       })
 
       if (result.success) {
+        // Issuing stock lowers currentStock on each product, and that figure is
+        // shown in the combobox, so the cached list has to go.
+        invalidateLookups("products")
         router.push("/inventory/mis")
         router.refresh()
       } else {
@@ -141,12 +137,18 @@ export function MisCreateClient({
           </div>
           <div>
             <label className="text-sm font-medium">Staff</label>
-            <Select onValueChange={setStaffId} value={staffId}>
+            <Select
+              onValueChange={setStaffId}
+              value={staffId}
+              disabled={loadingStaff}
+            >
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select staff" />
+                <SelectValue
+                  placeholder={loadingStaff ? "Loading..." : "Select staff"}
+                />
               </SelectTrigger>
               <SelectContent>
-                {staff.map((s: any) => (
+                {staff.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
@@ -181,9 +183,7 @@ export function MisCreateClient({
         {/* Mobile card layout */}
         <div className="space-y-4 sm:hidden">
           {items.map((item, index) => {
-            const selectedProduct = products.find(
-              (p: any) => p.id === item.productId
-            )
+            const selectedProduct = products.find((p) => p.id === item.productId)
             return (
               <div key={index} className="rounded-lg border p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -201,9 +201,6 @@ export function MisCreateClient({
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Product *</label>
                   <ProductCombobox
-                    products={products}
-                    categories={categories}
-                    units={units}
                     value={item.productId}
                     onChange={(v) => updateItem(index, "productId", v)}
                   />
@@ -234,7 +231,7 @@ export function MisCreateClient({
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
                       <SelectContent>
-                        {bins.map((b: any) => (
+                        {bins.map((b) => (
                           <SelectItem key={b.id} value={b.id}>
                             {b.name}
                           </SelectItem>
@@ -263,9 +260,7 @@ export function MisCreateClient({
             </thead>
             <tbody>
               {items.map((item, index) => {
-                const selectedProduct = products.find(
-                  (p: any) => p.id === item.productId
-                )
+                const selectedProduct = products.find((p) => p.id === item.productId)
                 return (
                   <tr key={index} className="border-b last:border-0">
                     <td className="py-2 pr-2 text-muted-foreground">
@@ -274,9 +269,6 @@ export function MisCreateClient({
                     <td className="py-2 pr-2">
                       <div className="w-[300px]">
                         <ProductCombobox
-                          products={products}
-                          categories={categories}
-                          units={units}
                           value={item.productId}
                           onChange={(v) => updateItem(index, "productId", v)}
                         />
@@ -310,7 +302,7 @@ export function MisCreateClient({
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                         <SelectContent>
-                          {bins.map((b: any) => (
+                          {bins.map((b) => (
                             <SelectItem key={b.id} value={b.id}>
                               {b.name}
                             </SelectItem>

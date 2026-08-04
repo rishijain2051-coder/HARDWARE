@@ -17,6 +17,8 @@ import {
 import { saveGrn } from "../actions"
 import { ProductCombobox } from "../../components/product-combobox"
 import { TXN_LABELS } from "@/lib/labels"
+import { invalidateLookups, useLookup } from "@/components/lookup-cache"
+import type { ProductRecord } from "@/lib/lookups/types"
 
 interface LineItem {
   productId: string
@@ -29,24 +31,16 @@ interface LineItem {
   binId: string
 }
 
-export function GrnCreateClient({
-  suppliers,
-  products,
-  bins,
-  categories,
-  units,
-  userId,
-}: {
-  suppliers: any[]
-  products: any[]
-  bins: any[]
-  categories: any[]
-  units: any[]
-  userId: string
-}) {
+export function GrnCreateClient() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Both lists come from localStorage and are requested in a single batched
+  // call on a cold cache. The GRN is attributed server-side from the session,
+  // so no user id needs to travel to the browser and back.
+  const { rows: suppliers, loading: loadingSuppliers } = useLookup("suppliers")
+  const { rows: bins } = useLookup("bins")
 
   const [supplierId, setSupplierId] = useState("")
   const [invoiceNumber, setInvoiceNumber] = useState("")
@@ -66,7 +60,12 @@ export function GrnCreateClient({
     },
   ])
 
-  const updateItem = (index: number, field: string, value: any, productData?: any) => {
+  const updateItem = (
+    index: number,
+    field: string,
+    value: string | number,
+    productData?: ProductRecord
+  ) => {
     setItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item
@@ -135,10 +134,13 @@ export function GrnCreateClient({
           rate: i.rate,
           binId: i.binId || undefined,
         })),
-        createdById: userId,
       })
 
       if (result.success) {
+        // Booking stock changes currentStock on every product in the entry, and
+        // that figure is shown next to the SKU in the combobox, so the cached
+        // list has to go.
+        invalidateLookups("products")
         router.push("/inventory/grn")
         router.refresh()
       } else {
@@ -173,12 +175,18 @@ export function GrnCreateClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium">Supplier *</label>
-            <Select onValueChange={setSupplierId} value={supplierId}>
+            <Select
+              onValueChange={setSupplierId}
+              value={supplierId}
+              disabled={loadingSuppliers}
+            >
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select supplier" />
+                <SelectValue
+                  placeholder={loadingSuppliers ? "Loading..." : "Select supplier"}
+                />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((s: any) => (
+                {suppliers.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
@@ -245,9 +253,6 @@ export function GrnCreateClient({
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Product *</label>
                 <ProductCombobox
-                  products={products}
-                  categories={categories}
-                  units={units}
                   value={item.productId}
                   onChange={(v) => updateItem(index, "productId", v)}
                   onProductData={(p) => updateItem(index, "productId", p.id, p)}
@@ -301,7 +306,7 @@ export function GrnCreateClient({
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    {bins.map((b: any) => (
+                    {bins.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
                       </SelectItem>
@@ -335,9 +340,6 @@ export function GrnCreateClient({
                   <td className="py-2 pr-2">
                     <div className="w-[300px]">
                       <ProductCombobox
-                        products={products}
-                        categories={categories}
-                        units={units}
                         value={item.productId}
                         onChange={(v) => updateItem(index, "productId", v)}
                         onProductData={(p) => updateItem(index, "productId", p.id, p)}
@@ -392,7 +394,7 @@ export function GrnCreateClient({
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
                       <SelectContent>
-                        {bins.map((b: any) => (
+                        {bins.map((b) => (
                           <SelectItem key={b.id} value={b.id}>
                             {b.name}
                           </SelectItem>

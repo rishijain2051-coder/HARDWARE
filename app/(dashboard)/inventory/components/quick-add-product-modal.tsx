@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -19,21 +18,23 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { saveProduct } from "@/app/(dashboard)/masters/products/actions"
+import { useLookup } from "@/components/lookup-cache"
 
 export function QuickAddProductModal({
   open,
   onOpenChange,
-  categories,
-  units,
   onSuccess,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  categories: any[]
-  units: any[]
   onSuccess: () => void
 }) {
-  const router = useRouter()
+  // Read straight from the cache rather than taking these as props: the modal is
+  // reached from a combobox nested a few levels down, and threading two lists
+  // through every form in between bought nothing.
+  const { rows: categories } = useLookup("categories")
+  const { rows: units } = useLookup("units")
+
   const [description, setDescription] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [unitId, setUnitId] = useState("")

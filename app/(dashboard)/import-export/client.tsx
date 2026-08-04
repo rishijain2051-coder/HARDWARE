@@ -5,6 +5,7 @@ import { Upload, Download, FileSpreadsheet, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 
 export function ImportExportClient() {
   const [importing, setImporting] = useState(false)
@@ -70,6 +71,11 @@ export function ImportExportClient() {
       })
       const result = await res.json()
       setImportResult(result)
+      if (result?.success) {
+        // A spreadsheet import can create categories, units and bins as it goes,
+        // so all four cached lists are suspect after one.
+        invalidateLookups(["products", "categories", "units", "bins"])
+      }
     } catch (error) {
       setImportResult({ success: false, error: "Import failed" })
     } finally {

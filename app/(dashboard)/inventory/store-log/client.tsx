@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { hardDeleteStoreLog } from "./actions"
 import { usePermissions } from "@/components/permission-provider"
+import { invalidateLookups } from "@/components/lookup-cache"
 import { transactionTypeLabel } from "@/lib/labels"
 
 export function StoreLogClient({ data }: { data: any[] }) {
@@ -22,6 +23,9 @@ export function StoreLogClient({ data }: { data: any[] }) {
       const res = await hardDeleteStoreLog(id)
       if (res?.error) {
         alert(res.error)
+      } else {
+        // The running balance was rewritten, which moves currentStock.
+        invalidateLookups("products")
       }
     }
   }

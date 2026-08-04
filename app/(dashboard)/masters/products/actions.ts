@@ -290,20 +290,9 @@ export async function deleteProduct(id: string, hardDelete: boolean = false) {
   }
 }
 
-// Lookup helpers for the form. Gated on the product master rather than each
-// individual master, since these are reference lists needed to build a product.
-export async function getFormLookups() {
-  const gate = await authorize("PRODUCT_MASTER", "VIEW")
-  if (!gate.success) return { categories: [], units: [], bins: [], attributes: [] }
-
-  const [categories, units, bins, attributes] = await Promise.all([
-    prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.unit.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.bin.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.attribute.findMany({ orderBy: { name: "asc" }, include: { categories: true } }),
-  ])
-  return { categories, units, bins, attributes }
-}
+// The form's reference lists (categories, units, bins, attributes) are no longer
+// read here. They are served from the browser cache via `fetchLookups` in
+// lib/lookups/actions.ts, which is also where their permission gates live.
 
 export async function searchProducts(query: string) {
   const gate = await authorize("PRODUCT_MASTER", "VIEW")
