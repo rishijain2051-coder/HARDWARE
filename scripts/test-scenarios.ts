@@ -943,6 +943,119 @@ async function phaseF_edgeCases() {
     )
   }
 
+  /*
+   * --- permanently deleting an employee is admin-only, and never silently
+   *     rewrites history ---
+   *
+   * Both foreign keys pointing at Staff are ON DELETE SET NULL, so the database
+   * would happily accept the delete and blank the attribution on every सामान दिया
+   * and ledger entry the employee appears in. The action has to notice that
+   * itself, because nothing downstream will.
+   */
+  {
+    const STAFF = "app/(dashboard)/masters/staff/actions.ts"
+    const admin = byKey("admin")
+    const manager = byKey("manager")
+
+    const makeEmployee = async (name: string) => {
+      await callAction(
+        STAFF,
+        "saveStaff",
+        "/masters/staff",
+        [{ name, department: "", employeeCode: "", phone: "", isActive: true }],
+        admin.cookie
+      )
+      return prisma.staff.findFirstOrThrow({ where: { name } })
+    }
+
+    const remove = (cookie: string, id: string, hard: boolean) =>
+      callAction(STAFF, "deleteStaff", "/masters/staff", [id, hard], cookie)
+
+    // No built-in non-admin role holds STAFF_MASTER:DELETE, so grant it to the
+    // manager's throwaway clone. Without it the refusal below would be for the
+    // wrong reason — a missing DELETE rather than a missing super admin.
+    const deletePerm = await prisma.permission.findFirst({
+      where: { module: "STAFF_MASTER", action: "DELETE" },
+      select: { id: true },
+    })
+    check(G, "STAFF_MASTER:DELETE exists in the catalogue", !!deletePerm)
+    await prisma.rolePermission.create({
+      data: { roleId: manager.roleId!, permissionId: deletePerm!.id },
+    })
+
+    try {
+      // --- a non-admin holding DELETE may deactivate, but not destroy ---
+      const target = await makeEmployee(`${PREFIX} Delete Me`)
+
+      const refused = await remove(manager.cookie!, target.id, true)
+      const afterRefusal = await prisma.staff.findUnique({ where: { id: target.id } })
+      check(G, "non-admin cannot permanently delete an employee", !!afterRefusal)
+      check(
+        G,
+        "and the refusal does not deactivate as a consolation",
+        afterRefusal?.isActive === true
+      )
+      check(
+        G,
+        "and it says the restriction is administrator-only",
+        refused.body.includes("administrator"),
+        refused.body.slice(0, 80)
+      )
+
+      const soft = await remove(manager.cookie!, target.id, false)
+      const afterSoft = await prisma.staff.findUnique({ where: { id: target.id } })
+      check(G, "non-admin holding DELETE can still deactivate", afterSoft?.isActive === false)
+      check(G, "deactivation keeps the record", !!afterSoft, soft.status.toString())
+
+      // --- an admin can destroy a record with no history behind it ---
+      await remove(admin.cookie!, target.id, true)
+      const gone = await prisma.staff.findUnique({ where: { id: target.id } })
+      check(G, "admin can permanently delete an employee", gone === null)
+
+      // --- but not one whose name is on a transaction ---
+      const withHistory = await makeEmployee(`${PREFIX} Has History`)
+      const mis = await prisma.misHeader.create({
+        data: {
+          misNumber: `${PREFIX}-MIS-DEL-${Date.now()}`,
+          recipientType: "MANUFACTURING",
+          staffId: withHistory.id,
+          createdById: fixtures.userIds[0],
+        },
+      })
+
+      try {
+        const blocked = await remove(admin.cookie!, withHistory.id, true)
+        const survivor = await prisma.staff.findUnique({ where: { id: withHistory.id } })
+        check(G, "an employee with transactions is not deleted", !!survivor)
+        check(
+          G,
+          "and the reason names the transactions",
+          blocked.body.includes(TXN_LABELS.outward) || blocked.body.includes("store log"),
+          blocked.body.slice(0, 120)
+        )
+        check(
+          G,
+          "and the transaction keeps its attribution",
+          (await prisma.misHeader.findUnique({ where: { id: mis.id } }))?.staffId ===
+            withHistory.id,
+          "ON DELETE SET NULL would have blanked this"
+        )
+        check(
+          G,
+          "and it is not deactivated behind the user's back either",
+          survivor?.isActive === true
+        )
+      } finally {
+        // Created directly, so teardown (which keys off test products) won't see it.
+        await prisma.misHeader.delete({ where: { id: mis.id } })
+      }
+    } finally {
+      await prisma.rolePermission.deleteMany({
+        where: { roleId: manager.roleId!, permissionId: deletePerm!.id },
+      })
+    }
+  }
+
   // --- deactivation takes effect on the *existing* session ---
   const inactive = byKey("inactive")
   const before = await getPage("/dashboard", inactive.cookie)

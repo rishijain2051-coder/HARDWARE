@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { staffSchema, StaffFormValues } from "./schema"
 import { authorize } from "@/lib/dal"
 import { blankToNull, normaliseStaffName, staffNameKey } from "@/lib/staff"
+import { TXN_LABELS } from "@/lib/labels"
 
 /**
  * The same employee could previously be added over and over: `Staff.name` had no
@@ -93,18 +94,74 @@ function isUniqueViolation(error: unknown): boolean {
   )
 }
 
-export async function deleteStaff(id: string) {
+/**
+ * Deactivates an employee, or removes the record outright when `hardDelete` is
+ * set.
+ *
+ * Deactivating is the everyday operation and needs STAFF_MASTER:DELETE.
+ * Destroying the record is irreversible and stays with super admins, matching
+ * `deleteProduct`.
+ */
+export async function deleteStaff(id: string, hardDelete: boolean = false) {
   const gate = await authorize("STAFF_MASTER", "DELETE")
   if (!gate.success) return gate
 
   try {
-    await prisma.staff.update({
+    if (!hardDelete) {
+      await prisma.staff.update({ where: { id }, data: { isActive: false } })
+      revalidatePath("/masters/staff")
+      return { success: true }
+    }
+
+    if (!gate.access.isSuperAdmin) {
+      return { success: false, error: "Only administrators can permanently delete records." }
+    }
+
+    const staff = await prisma.staff.findUnique({
       where: { id },
-      data: { isActive: false },
+      select: { name: true },
     })
+    if (!staff) return { success: false, error: "Employee not found." }
+
+    /*
+     * Both foreign keys pointing at Staff are `ON DELETE SET NULL`, so Postgres
+     * would accept this delete and quietly blank the attribution on every
+     * सामान दिया and every ledger entry the employee appears in. The history
+     * would then read "issued to —" with nothing to say who it had been.
+     *
+     * So refuse, the way `deleteProduct` refuses for a product with
+     * transactions. A record marked inactive is a far better outcome than a
+     * ledger that has forgotten who took the stock.
+     */
+    const [outwardCount, ledgerCount] = await Promise.all([
+      prisma.misHeader.count({ where: { staffId: id } }),
+      prisma.storeLog.count({ where: { staffId: id } }),
+    ])
+
+    if (outwardCount + ledgerCount > 0) {
+      const parts = [
+        outwardCount > 0 && `${outwardCount} ${TXN_LABELS.outward}`,
+        ledgerCount > 0 && `${ledgerCount} store log ${ledgerCount === 1 ? "entry" : "entries"}`,
+      ].filter(Boolean)
+      return {
+        success: false,
+        error:
+          `"${staff.name}" appears in ${parts.join(" and ")}, so deleting the record would ` +
+          `erase who those belong to. Deactivate the employee instead — they will stop ` +
+          `appearing in dropdowns but the history stays intact.`,
+      }
+    }
+
+    await prisma.staff.delete({ where: { id } })
     revalidatePath("/masters/staff")
     return { success: true }
-  } catch {
-    return { success: false, error: "Failed to delete staff" }
+  } catch (error: unknown) {
+    console.error("Delete staff error:", error)
+    return {
+      success: false,
+      error: hardDelete
+        ? "Failed to permanently delete the employee."
+        : "Failed to deactivate the employee.",
+    }
   }
 }

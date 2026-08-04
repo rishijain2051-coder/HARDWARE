@@ -39,6 +39,9 @@ export function StaffClient() {
   const canCreate = perms.can("STAFF_MASTER", "CREATE")
   const canEdit = perms.can("STAFF_MASTER", "EDIT")
   const canDelete = perms.can("STAFF_MASTER", "DELETE")
+  // Destroying a record outright, as opposed to deactivating it, is reserved for
+  // super admins — same rule as products.
+  const canHardDelete = canDelete && perms.isSuperAdmin
 
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -103,15 +106,33 @@ export function StaffClient() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  /**
+   * Deactivate, or — for a super admin — offer to remove the record outright.
+   *
+   * Non-admins are not shown the choice at all rather than being offered it and
+   * then refused by the server. The server checks regardless.
+   */
+  const handleDelete = async (staff: { id: string; name: string }) => {
     if (!canDelete) return
-    if (confirm("Are you sure you want to deactivate this staff member?")) {
-      const result = await deleteStaff(id)
-      invalidateAfter("staff")
-      if (!result.success && result.error) {
-        alert(result.error)
-      }
+
+    let permanent = false
+    if (canHardDelete) {
+      permanent = confirm(
+        `Permanently delete "${staff.name}" from the database?\n\n` +
+          `OK — delete the record for good. This cannot be undone.\n` +
+          `Cancel — just deactivate, keeping the record and its history.`
+      )
+      if (!permanent && !confirm(`Deactivate "${staff.name}"?`)) return
+    } else if (!confirm(`Are you sure you want to deactivate "${staff.name}"?`)) {
+      return
     }
+
+    const result = await deleteStaff(staff.id, permanent)
+    if (!result.success && result.error) {
+      alert(result.error)
+      return
+    }
+    invalidateAfter("staff")
   }
 
   const columns = [
@@ -164,7 +185,8 @@ export function StaffClient() {
               variant="ghost"
               size="icon"
               className="text-destructive hover:text-destructive"
-              onClick={() => handleDelete(row.original.id)}
+              title={canHardDelete ? "Deactivate or delete" : "Deactivate"}
+              onClick={() => handleDelete(row.original)}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
