@@ -227,8 +227,16 @@ model Supplier {
 }
 
 model Staff {
-  id           String   @id @default(uuid())
-  name         String
+  id   String @id @default(uuid())
+  name String
+  /// `name` trimmed, internal whitespace collapsed, lowercased.
+  ///
+  /// The uniqueness lives here rather than on `name` so that "MOTI", "moti" and
+  /// "moti " cannot all be entered as separate employees, while `name` keeps
+  /// whatever capitalisation was typed. Being a real unique index, it also holds
+  /// when two submits arrive at once — which a check-then-insert in the action
+  /// cannot. Always written via `staffNameKey()`.
+  nameKey      String   @unique
   department   String?
   employeeCode String?
   phone        String?

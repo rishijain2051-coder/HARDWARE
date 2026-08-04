@@ -19,7 +19,8 @@
     "postinstall": "prisma generate",
     "test:scenarios": "npx tsx scripts/test-scenarios.ts",
     "test:client-cache": "npx tsx scripts/verify-client-cache.ts",
-    "test:dataset-cache": "npx tsx scripts/verify-dataset-cache.ts"
+    "test:dataset-cache": "npx tsx scripts/verify-dataset-cache.ts",
+    "staff:dedupe": "npx tsx scripts/dedupe-staff.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

@@ -231,7 +231,9 @@ export function UnitsClient() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? "Saving..." : "Save"}
+                </Button>
               </div>
             </form>
           </Form>

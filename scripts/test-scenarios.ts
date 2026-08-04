@@ -860,6 +860,89 @@ async function phaseF_edgeCases() {
   const setup = await fetch(`${BASE}/api/setup-admin`, { redirect: "manual" })
   eq(G, "/api/setup-admin is gone", setup.status, 404)
 
+  /*
+   * --- the same employee cannot be added twice ---
+   *
+   * Staff.name had no unique constraint and saveStaff did no checking, so
+   * clicking Save again when nothing appeared to happen inserted a second row.
+   * Eighteen rows in the live database were twelve employees.
+   *
+   * Uniqueness is on a normalised key, so the case and spacing variants have to
+   * be rejected too, and a rename onto an existing employee is the same clash.
+   */
+  {
+    const STAFF = "app/(dashboard)/masters/staff/actions.ts"
+    const manager = byKey("manager")
+    const base = `${PREFIX} Dup Employee`
+
+    const saveStaff = (name: string, extra: Record<string, unknown> = {}) =>
+      callAction(
+        STAFF,
+        "saveStaff",
+        "/masters/staff",
+        [{ name, department: "", employeeCode: "", phone: "", isActive: true, ...extra }],
+        manager.cookie
+      )
+
+    await saveStaff(base)
+    const created = await prisma.staff.findMany({ where: { name: base } })
+    eq(G, "employee created once", created.length, 1)
+
+    for (const [label, variant] of [
+      ["exactly the same name", base],
+      ["a different case", base.toUpperCase()],
+      ["trailing whitespace", `${base}   `],
+      ["doubled inner spaces", base.replace(/ /g, "  ")],
+    ] as [string, string][]) {
+      const res = await saveStaff(variant)
+      const rows = await prisma.staff.count({
+        where: { name: { startsWith: `${PREFIX} Dup Employee`, mode: "insensitive" } },
+      })
+      check(
+        G,
+        `duplicate employee rejected — ${label}`,
+        rows === 1,
+        rows === 1 ? undefined : `${rows} rows after re-submitting`
+      )
+      check(
+        G,
+        `and the caller is told why — ${label}`,
+        res.body.includes("already"),
+        res.body.slice(0, 80)
+      )
+    }
+
+    // Two submits landing together: the check can pass twice, so the unique
+    // index has to be the thing that stops the second insert.
+    const racy = `${PREFIX} Race Employee`
+    await Promise.all([saveStaff(racy), saveStaff(racy), saveStaff(racy)])
+    const raced = await prisma.staff.count({
+      where: { name: { equals: racy, mode: "insensitive" } },
+    })
+    eq(G, "three simultaneous submits create one employee", raced, 1)
+
+    // Renaming one employee onto another is the same conflict.
+    const survivor = await prisma.staff.findFirst({ where: { name: base } })
+    const renameRes = await saveStaff(racy, { id: survivor!.id })
+    const stillNamed = await prisma.staff.findUnique({ where: { id: survivor!.id } })
+    check(
+      G,
+      "renaming an employee onto an existing one is refused",
+      stillNamed?.name === base,
+      `name is now ${JSON.stringify(stillNamed?.name)}`
+    )
+    check(G, "and that rename says why", renameRes.body.includes("already"))
+
+    // A blank optional field is stored as null, not "", so the two stop
+    // coexisting for the same "not recorded" state.
+    check(
+      G,
+      "blank optional fields are stored as null",
+      stillNamed?.employeeCode === null && stillNamed?.phone === null,
+      `code=${JSON.stringify(stillNamed?.employeeCode)} phone=${JSON.stringify(stillNamed?.phone)}`
+    )
+  }
+
   // --- deactivation takes effect on the *existing* session ---
   const inactive = byKey("inactive")
   const before = await getPage("/dashboard", inactive.cookie)
